@@ -8,9 +8,9 @@ import com.keshav.exception.CategoryNotFoundException;
 import com.keshav.exception.ProductNotFoundException;
 import com.keshav.repository.CategoryRepository;
 import com.keshav.repository.ProductRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class ProductService implements IProductService {
@@ -30,7 +30,8 @@ public class ProductService implements IProductService {
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() ->
                         new CategoryNotFoundException(
-                                "Category not found with id: " + productDTO.getCategoryId()
+                                "Category not found with id: "
+                                        + productDTO.getCategoryId()
                         )
                 );
 
@@ -50,12 +51,44 @@ public class ProductService implements IProductService {
     }
 
     @Override
-    public List<ProductResponseDTO> getAllProducts() {
+    public Page<ProductResponseDTO> getAllProducts(
+            String search,
+            Long categoryId,
+            Pageable pageable) {
 
-        return productRepository.findAll()
-                .stream()
-                .map(this::convertToResponseDTO)
-                .toList();
+        Page<Product> products;
+
+        if (search != null && !search.isBlank() && categoryId != null) {
+
+            products = productRepository
+                    .findByNameContainingIgnoreCaseAndCategoryId(
+                            search,
+                            categoryId,
+                            pageable
+                    );
+
+        } else if (search != null && !search.isBlank()) {
+
+            products = productRepository
+                    .findByNameContainingIgnoreCase(
+                            search,
+                            pageable
+                    );
+
+        } else if (categoryId != null) {
+
+            products = productRepository
+                    .findByCategoryId(
+                            categoryId,
+                            pageable
+                    );
+
+        } else {
+
+            products = productRepository.findAll(pageable);
+        }
+
+        return products.map(this::convertToResponseDTO);
     }
 
     @Override
@@ -83,12 +116,14 @@ public class ProductService implements IProductService {
                         )
                 );
 
-        Category category = categoryRepository.findById(productDTO.getCategoryId())
-                .orElseThrow(() ->
-                        new CategoryNotFoundException(
-                                "Category not found with id: " + productDTO.getCategoryId()
-                        )
-                );
+        Category category = categoryRepository.findById(
+                productDTO.getCategoryId()
+        ).orElseThrow(() ->
+                new CategoryNotFoundException(
+                        "Category not found with id: "
+                                + productDTO.getCategoryId()
+                )
+        );
 
         existingProduct.setName(productDTO.getName());
         existingProduct.setDescription(productDTO.getDescription());
@@ -98,7 +133,8 @@ public class ProductService implements IProductService {
         existingProduct.setStatus(productDTO.getStatus());
         existingProduct.setCategory(category);
 
-        Product updatedProduct = productRepository.save(existingProduct);
+        Product updatedProduct =
+                productRepository.save(existingProduct);
 
         return convertToResponseDTO(updatedProduct);
     }
