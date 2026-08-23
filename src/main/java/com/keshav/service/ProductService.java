@@ -1,7 +1,12 @@
 package com.keshav.service;
 
+import com.keshav.dto.ProductRequestDTO;
+import com.keshav.dto.ProductResponseDTO;
+import com.keshav.entity.Category;
 import com.keshav.entity.Product;
+import com.keshav.exception.CategoryNotFoundException;
 import com.keshav.exception.ProductNotFoundException;
+import com.keshav.repository.CategoryRepository;
 import com.keshav.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 
@@ -11,34 +16,65 @@ import java.util.List;
 public class ProductService implements IProductService {
 
     private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
 
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository,
+                          CategoryRepository categoryRepository) {
         this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     @Override
-    public Product saveProduct(Product product) {
-        return productRepository.save(product);
+    public ProductResponseDTO saveProduct(ProductRequestDTO productDTO) {
+
+        Category category = categoryRepository.findById(productDTO.getCategoryId())
+                .orElseThrow(() ->
+                        new CategoryNotFoundException(
+                                "Category not found with id: " + productDTO.getCategoryId()
+                        )
+                );
+
+        Product product = new Product();
+
+        product.setName(productDTO.getName());
+        product.setDescription(productDTO.getDescription());
+        product.setPrice(productDTO.getPrice());
+        product.setStock(productDTO.getStock());
+        product.setImage(productDTO.getImage());
+        product.setStatus(productDTO.getStatus());
+        product.setCategory(category);
+
+        Product savedProduct = productRepository.save(product);
+
+        return convertToResponseDTO(savedProduct);
     }
 
     @Override
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public List<ProductResponseDTO> getAllProducts() {
+
+        return productRepository.findAll()
+                .stream()
+                .map(this::convertToResponseDTO)
+                .toList();
     }
 
     @Override
-    public Product getProductById(Long id) {
+    public ProductResponseDTO getProductById(Long id) {
 
-        return productRepository.findById(id)
+        Product product = productRepository.findById(id)
                 .orElseThrow(() ->
                         new ProductNotFoundException(
                                 "Product not found with id: " + id
                         )
                 );
+
+        return convertToResponseDTO(product);
     }
 
     @Override
-    public Product updateProduct(Long id, Product product) {
+    public ProductResponseDTO updateProduct(
+            Long id,
+            ProductRequestDTO productDTO) {
 
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() ->
@@ -47,14 +83,24 @@ public class ProductService implements IProductService {
                         )
                 );
 
-        existingProduct.setName(product.getName());
-        existingProduct.setDescription(product.getDescription());
-        existingProduct.setPrice(product.getPrice());
-        existingProduct.setStock(product.getStock());
-        existingProduct.setImage(product.getImage());
-        existingProduct.setStatus(product.getStatus());
+        Category category = categoryRepository.findById(productDTO.getCategoryId())
+                .orElseThrow(() ->
+                        new CategoryNotFoundException(
+                                "Category not found with id: " + productDTO.getCategoryId()
+                        )
+                );
 
-        return productRepository.save(existingProduct);
+        existingProduct.setName(productDTO.getName());
+        existingProduct.setDescription(productDTO.getDescription());
+        existingProduct.setPrice(productDTO.getPrice());
+        existingProduct.setStock(productDTO.getStock());
+        existingProduct.setImage(productDTO.getImage());
+        existingProduct.setStatus(productDTO.getStatus());
+        existingProduct.setCategory(category);
+
+        Product updatedProduct = productRepository.save(existingProduct);
+
+        return convertToResponseDTO(updatedProduct);
     }
 
     @Override
@@ -67,5 +113,20 @@ public class ProductService implements IProductService {
         }
 
         productRepository.deleteById(id);
+    }
+
+    private ProductResponseDTO convertToResponseDTO(Product product) {
+
+        return new ProductResponseDTO(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getStock(),
+                product.getImage(),
+                product.getStatus(),
+                product.getCategory().getId(),
+                product.getCategory().getName()
+        );
     }
 }

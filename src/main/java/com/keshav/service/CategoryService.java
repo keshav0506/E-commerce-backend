@@ -1,11 +1,11 @@
 package com.keshav.service;
 
+import com.keshav.dto.CategoryRequestDTO;
+import com.keshav.dto.CategoryResponseDTO;
 import com.keshav.entity.Category;
 import com.keshav.exception.CategoryNotFoundException;
 import com.keshav.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
@@ -19,37 +19,85 @@ public class CategoryService implements ICategoryService {
     }
 
     @Override
-    public Category saveCategory(Category category) {
-        return categoryRepository.save(category);
+    public CategoryResponseDTO saveCategory(CategoryRequestDTO dto) {
+
+        Category category = new Category();
+
+        category.setName(dto.getName());
+        category.setDescription(dto.getDescription());
+        category.setImage(dto.getImage());
+        category.setStatus(dto.getStatus());
+
+        Category savedCategory = categoryRepository.save(category);
+
+        return convertToResponseDTO(savedCategory);
     }
 
     @Override
-    public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+    public List<CategoryResponseDTO> getAllCategories() {
+
+        return categoryRepository.findAll()
+                .stream()
+                .map(this::convertToResponseDTO)
+                .toList();
     }
 
     @Override
-    public Category getCategoryById(Long id) {
-        return categoryRepository.findById(id)
+    public CategoryResponseDTO getCategoryById(Long id) {
+
+        Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
                         new CategoryNotFoundException(
                                 "Category not found with id: " + id
                         ));
+
+        return convertToResponseDTO(category);
     }
 
     @Override
-    public Category updateCategory(Long id, Category category) {
+    public CategoryResponseDTO updateCategory(
+            Long id,
+            CategoryRequestDTO dto) {
 
         Category existingCategory =
-                categoryRepository.findById(id).orElseThrow();
+                categoryRepository.findById(id)
+                        .orElseThrow(() ->
+                                new CategoryNotFoundException(
+                                        "Category not found with id: " + id
+                                ));
 
-        existingCategory.setName(category.getName());
+        existingCategory.setName(dto.getName());
+        existingCategory.setDescription(dto.getDescription());
+        existingCategory.setImage(dto.getImage());
+        existingCategory.setStatus(dto.getStatus());
 
-        return categoryRepository.save(existingCategory);
+        Category updatedCategory =
+                categoryRepository.save(existingCategory);
+
+        return convertToResponseDTO(updatedCategory);
     }
 
     @Override
     public void deleteCategory(Long id) {
-        categoryRepository.deleteById(id);
+
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() ->
+                        new CategoryNotFoundException(
+                                "Category not found with id: " + id
+                        ));
+
+        categoryRepository.delete(category);
+    }
+
+    private CategoryResponseDTO convertToResponseDTO(
+            Category category) {
+
+        return new CategoryResponseDTO(
+                category.getId(),
+                category.getName(),
+                category.getDescription(),
+                category.getImage(),
+                category.getStatus()
+        );
     }
 }

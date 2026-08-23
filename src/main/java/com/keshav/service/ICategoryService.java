@@ -1,18 +1,20 @@
 package com.keshav.service;
 
-import com.keshav.entity.Category;
+import com.keshav.dto.CategoryRequestDTO;
+import com.keshav.dto.CategoryResponseDTO;
 
 import java.util.List;
 
 public interface ICategoryService {
 
-    Category saveCategory(Category category);
+    CategoryResponseDTO saveCategory(CategoryRequestDTO category);
 
-    List<Category> getAllCategories();
+    List<CategoryResponseDTO> getAllCategories();
 
-    Category getCategoryById(Long id);
+    CategoryResponseDTO getCategoryById(Long id);
 
-    Category updateCategory(Long id, Category category);
+    CategoryResponseDTO updateCategory(Long id,
+                                       CategoryRequestDTO category);
 
     void deleteCategory(Long id);
 }

@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class CategoryResponseDTO {
+public class ProductResponseDTO {
 
     private Long id;
 
@@ -15,7 +15,15 @@ public class CategoryResponseDTO {
 
     private String description;
 
+    private double price;
+
+    private int stock;
+
     private String image;
 
     private String status;
+
+    private Long categoryId;
+
+    private String categoryName;
 }

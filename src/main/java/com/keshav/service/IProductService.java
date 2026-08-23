@@ -1,19 +1,19 @@
 package com.keshav.service;
 
-import com.keshav.entity.Product;
+import com.keshav.dto.ProductRequestDTO;
+import com.keshav.dto.ProductResponseDTO;
 
 import java.util.List;
 
-public interface IProductService
-{
+public interface IProductService {
 
-    Product saveProduct(Product product);
+    ProductResponseDTO saveProduct(ProductRequestDTO productDTO);
 
-    List<Product> getAllProducts();
+    List<ProductResponseDTO> getAllProducts();
 
-    Product getProductById(Long id);
+    ProductResponseDTO getProductById(Long id);
 
-    Product updateProduct(Long id, Product product);
+    ProductResponseDTO updateProduct(Long id, ProductRequestDTO productDTO);
 
     void deleteProduct(Long id);
 }
