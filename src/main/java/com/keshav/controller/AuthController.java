@@ -1,5 +1,7 @@
 package com.keshav.controller;
 
+import com.keshav.dto.LoginRequestDTO;
+import com.keshav.dto.LoginResponseDTO;
 import com.keshav.dto.RegisterRequestDTO;
 import com.keshav.dto.RegisterResponseDTO;
 import com.keshav.service.IAuthService;
@@ -25,5 +27,14 @@ public class AuthController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(authService.register(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDTO> login(
+            @Valid @RequestBody LoginRequestDTO request) {
+
+        return ResponseEntity.ok(
+                authService.login(request)
+        );
     }
 }
