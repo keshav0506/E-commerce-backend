@@ -1,5 +1,6 @@
 package com.keshav.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
@@ -37,11 +38,25 @@ public class JwtService {
 
     public String extractEmail(String token) {
 
+        return getClaims(token).getSubject();
+    }
+
+    public boolean isTokenValid(String token) {
+
+        try {
+            getClaims(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private Claims getClaims(String token) {
+
         return Jwts.parser()
                 .verifyWith(getKey())
                 .build()
                 .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
+                .getPayload();
     }
 }

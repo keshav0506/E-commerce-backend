@@ -5,6 +5,8 @@ import com.keshav.dto.LoginResponseDTO;
 import com.keshav.dto.RegisterRequestDTO;
 import com.keshav.dto.RegisterResponseDTO;
 import com.keshav.entity.User;
+import com.keshav.exception.EmailAlreadyExistsException;
+import com.keshav.exception.InvalidCredentialsException;
 import com.keshav.repository.UserRepository;
 import com.keshav.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,7 +33,9 @@ public class AuthService implements IAuthService {
     public RegisterResponseDTO register(RegisterRequestDTO request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new EmailAlreadyExistsException(
+                    "Email already registered: " + request.getEmail()
+            );
         }
 
         User user = new User();
@@ -60,14 +64,18 @@ public class AuthService implements IAuthService {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
-                        new RuntimeException("Invalid email or password")
+                        new InvalidCredentialsException(
+                                "Invalid email or password"
+                        )
                 );
 
         if (!passwordEncoder.matches(
                 request.getPassword(),
                 user.getPassword())) {
 
-            throw new RuntimeException("Invalid email or password");
+            throw new InvalidCredentialsException(
+                    "Invalid email or password"
+            );
         }
 
         String token = jwtService.generateToken(
