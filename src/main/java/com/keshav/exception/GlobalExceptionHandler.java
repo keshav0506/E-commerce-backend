@@ -2,24 +2,24 @@ package com.keshav.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // =========================
+    // 404 NOT FOUND
+    // =========================
+
     @ExceptionHandler(CategoryNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleCategoryNotFound(
             CategoryNotFoundException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                404,
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
                 ex.getMessage()
-        );
-
-        return new ResponseEntity<>(
-                error,
-                HttpStatus.NOT_FOUND
         );
     }
 
@@ -27,101 +27,172 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleProductNotFound(
             ProductNotFoundException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                404,
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
                 ex.getMessage()
         );
-
-        return new ResponseEntity<>(
-                error,
-                HttpStatus.NOT_FOUND
-        );
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleBadRequest(
-            IllegalArgumentException ex) {
-
-        ErrorResponse error = new ErrorResponse(
-                400,
-                ex.getMessage()
-        );
-
-        return new ResponseEntity<>(
-                error,
-                HttpStatus.BAD_REQUEST
-        );
-    }
-
-    @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<String> handleEmailAlreadyExists(
-            EmailAlreadyExistsException ex) {
-
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ex.getMessage());
-    }
-
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<String> handleInvalidCredentials(
-            InvalidCredentialsException ex) {
-
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(ex.getMessage());
     }
 
     @ExceptionHandler(CartNotFoundException.class)
-    public ResponseEntity<String> handleCartNotFound(
+    public ResponseEntity<ErrorResponse> handleCartNotFound(
             CartNotFoundException ex) {
 
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ex.getMessage());
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
     }
 
     @ExceptionHandler(CartItemNotFoundException.class)
-    public ResponseEntity<String> handleCartItemNotFound(
+    public ResponseEntity<ErrorResponse> handleCartItemNotFound(
             CartItemNotFoundException ex) {
 
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ex.getMessage());
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
     }
 
     @ExceptionHandler(OrderNotFoundException.class)
-    public ResponseEntity<String> handleOrderNotFound(
+    public ResponseEntity<ErrorResponse> handleOrderNotFound(
             OrderNotFoundException ex) {
 
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ex.getMessage());
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
     }
 
-    @ExceptionHandler(CartEmptyException.class)
-    public ResponseEntity<String> handleCartEmpty(
-            CartEmptyException ex) {
 
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ex.getMessage());
+    // =========================
+    // 400 BAD REQUEST
+    // =========================
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex) {
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<String> handleIllegalState(
+    public ResponseEntity<ErrorResponse> handleIllegalState(
             IllegalStateException ex) {
 
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ex.getMessage());
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(CartEmptyException.class)
+    public ResponseEntity<ErrorResponse> handleCartEmpty(
+            CartEmptyException ex) {
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
     }
 
     @ExceptionHandler(InsufficientStockException.class)
-    public ResponseEntity<String> handleInsufficientStock(
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(
             InsufficientStockException ex) {
 
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
+    }
+
+
+    // =========================
+    // 409 CONFLICT
+    // =========================
+
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(
+            EmailAlreadyExistsException ex) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+    }
+
+
+    // =========================
+    // 401 UNAUTHORIZED
+    // =========================
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(
+            InvalidCredentialsException ex) {
+
+        return buildResponse(
+                HttpStatus.UNAUTHORIZED,
+                ex.getMessage()
+        );
+    }
+
+
+    // =========================
+    // 400 VALIDATION ERRORS
+    // =========================
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(
+            MethodArgumentNotValidException ex) {
+
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error ->
+                        error.getField() + ": " + error.getDefaultMessage()
+                )
+                .findFirst()
+                .orElse("Validation failed");
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                message
+        );
+    }
+
+
+    // =========================
+    // 500 INTERNAL SERVER ERROR
+    // =========================
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGeneralException(
+            Exception ex) {
+
+        return buildResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred"
+        );
+    }
+
+
+    // =========================
+    // COMMON RESPONSE BUILDER
+    // =========================
+
+    private ResponseEntity<ErrorResponse> buildResponse(
+            HttpStatus status,
+            String message) {
+
+        ErrorResponse error = new ErrorResponse(
+                status.value(),
+                message
+        );
+
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ex.getMessage());
+                .status(status)
+                .body(error);
     }
 }

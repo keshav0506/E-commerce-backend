@@ -111,6 +111,15 @@ public class SecurityConfig {
                         // EVERYTHING ELSE
                         // =========================
 
+                        .requestMatchers(
+                                "/api/admin/**"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/images/upload"
+                        ).hasRole("ADMIN")
+
                         .anyRequest().authenticated()
                 )
 
