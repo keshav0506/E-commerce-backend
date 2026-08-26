@@ -37,9 +37,23 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
+                        // =========================
+                        // AUTH
+                        // =========================
+
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login"
+                        ).permitAll()
+
+
+                        // =========================
+                        // PRODUCTS
+                        // =========================
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/products/**"
                         ).permitAll()
 
                         .requestMatchers(
@@ -57,14 +71,41 @@ public class SecurityConfig {
                                 "/api/products/**"
                         ).hasRole("ADMIN")
 
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/products/**"
-                        ).permitAll()
+
+                        // =========================
+                        // CATEGORIES
+                        // =========================
 
                         .requestMatchers(
                                 "/api/categories/**"
                         ).permitAll()
+
+
+                        // =========================
+                        // CART
+                        // =========================
+
+                        .requestMatchers(
+                                "/api/cart/**"
+                        ).authenticated()
+
+
+                        // =========================
+                        // ORDERS
+                        // =========================
+
+                        .requestMatchers(
+                                "/api/orders/**"
+                        ).authenticated()
+
+                        .requestMatchers(
+                                "/api/payments/**")
+                        .authenticated()
+
+
+                        // =========================
+                        // EVERYTHING ELSE
+                        // =========================
 
                         .anyRequest().authenticated()
                 )
