@@ -102,6 +102,10 @@ public class SecurityConfig {
                                 "/api/payments/**")
                         .authenticated()
 
+                        .requestMatchers(
+                                "/api/addresses/**"
+                        ).authenticated()
+
 
                         // =========================
                         // EVERYTHING ELSE

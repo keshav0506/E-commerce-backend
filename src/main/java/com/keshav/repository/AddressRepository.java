@@ -1,0 +1,17 @@
+package com.keshav.repository;
+
+import com.keshav.entity.Address;
+import com.keshav.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface AddressRepository extends JpaRepository<Address, Long> {
+
+    List<Address> findByUser(User user);
+
+    Optional<Address> findByIdAndUser(Long id, User user);
+
+    void deleteByIdAndUser(Long id, User user);
+}
