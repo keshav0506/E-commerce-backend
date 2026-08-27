@@ -46,6 +46,14 @@ public class Review {
     @Column(name = "verified_purchase", nullable = false)
     private boolean verifiedPurchase = false;
 
+    /**
+     * JSON-serialized list of image data URLs (base64) or remote URLs.
+     * Stored as TEXT to avoid adding a separate table for small image sets (≤4).
+     * Example: ["data:image/jpeg;base64,...", "https://..."]
+     */
+    @Column(name = "images", columnDefinition = "LONGTEXT")
+    private String images;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 

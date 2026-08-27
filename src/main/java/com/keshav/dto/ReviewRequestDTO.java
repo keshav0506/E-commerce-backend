@@ -7,6 +7,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,4 +23,10 @@ public class ReviewRequestDTO {
 
     @NotBlank(message = "Review comment cannot be empty")
     private String comment;
+
+    /**
+     * Optional list of images (base64 data URLs or public URLs).
+     * Up to 4 images, each max 5 MB when base64-encoded.
+     */
+    private List<String> images = new ArrayList<>();
 }

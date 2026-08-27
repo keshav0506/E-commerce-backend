@@ -1,5 +1,7 @@
 package com.keshav.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.keshav.dto.ProductReviewsSummaryDTO;
 import com.keshav.dto.ReviewRequestDTO;
 import com.keshav.dto.ReviewResponseDTO;
@@ -32,6 +34,7 @@ public class ReviewService implements IReviewService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final OrderItemRepository orderItemRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ReviewService(ReviewRepository reviewRepository,
                          ProductRepository productRepository,
@@ -41,6 +44,26 @@ public class ReviewService implements IReviewService {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.orderItemRepository = orderItemRepository;
+    }
+
+    /** Serialize List<String> images to JSON string for DB storage */
+    private String serializeImages(List<String> images) {
+        if (images == null || images.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(images);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Deserialize JSON string from DB back to List<String> */
+    private List<String> deserializeImages(String json) {
+        if (json == null || json.isBlank()) return new ArrayList<>();
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
     }
 
     private Optional<User> getAuthenticatedUser() {
@@ -125,6 +148,7 @@ public class ReviewService implements IReviewService {
                 .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
 
         boolean isVerified = orderItemRepository.existsByOrderUserIdAndProductId(user.getId(), product.getId());
+        String imagesJson = serializeImages(request.getImages());
 
         Optional<Review> existingReviewOpt = reviewRepository.findByProductIdAndUserId(productId, user.getId());
         Review review;
@@ -135,6 +159,7 @@ public class ReviewService implements IReviewService {
             review.setTitle(request.getTitle());
             review.setComment(request.getComment());
             review.setVerifiedPurchase(isVerified);
+            review.setImages(imagesJson);
             review.setUpdatedAt(LocalDateTime.now());
         } else {
             review = new Review();
@@ -144,6 +169,7 @@ public class ReviewService implements IReviewService {
             review.setTitle(request.getTitle());
             review.setComment(request.getComment());
             review.setVerifiedPurchase(isVerified);
+            review.setImages(imagesJson);
             review.setCreatedAt(LocalDateTime.now());
             review.setUpdatedAt(LocalDateTime.now());
         }
@@ -178,6 +204,7 @@ public class ReviewService implements IReviewService {
         dto.setComment(r.getComment());
         dto.setVerifiedPurchase(r.isVerifiedPurchase());
         dto.setOwner(isOwner);
+        dto.setImages(deserializeImages(r.getImages()));
         dto.setCreatedAt(r.getCreatedAt());
         dto.setUpdatedAt(r.getUpdatedAt());
         return dto;
