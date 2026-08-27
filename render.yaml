@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: ecommerce-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /api/products
+    envVars:
+      - key: PORT
+        value: 8081
+      - key: CLOUDINARY_CLOUD_NAME
+        value: oqmadwpj
+      - key: CLOUDINARY_API_KEY
+        value: "311644574419542"
+      - key: CLOUDINARY_API_SECRET
+        value: qXChiXs65JQHyNA-s6Utx0DEFz8
+      - key: RAZORPAY_KEY_ID
+        value: rzp_test_TU1wmyCS0s01Fo
+      - key: RAZORPAY_KEY_SECRET
+        value: bthxtLU6zVvljAkIn95L7XSw
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false

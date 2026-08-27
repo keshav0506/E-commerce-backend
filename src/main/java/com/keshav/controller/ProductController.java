@@ -6,6 +6,7 @@ import com.keshav.service.IProductService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,35 +25,51 @@ public class ProductController {
     public ResponseEntity<ProductResponseDTO> saveProduct(
             @Valid @RequestBody ProductRequestDTO productDTO) {
 
-        ProductResponseDTO savedProduct =
-                productService.saveProduct(productDTO);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(savedProduct);
+        ProductResponseDTO savedProduct = productService.saveProduct(productDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
     }
 
     @GetMapping
     public ResponseEntity<Page<ProductResponseDTO>> getAllProducts(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long categoryId,
-            @org.springframework.data.web.PageableDefault(size = 200) Pageable pageable) {
+            @RequestParam(required = false) Boolean featured,
+            @PageableDefault(size = 200) Pageable pageable) {
 
         return ResponseEntity.ok(
-                productService.getAllProducts(
-                        search,
-                        categoryId,
-                        pageable
-                )
+                productService.getAllProducts(search, categoryId, featured, pageable)
         );
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductResponseDTO> getProductById(
-            @PathVariable Long id) {
+    public ResponseEntity<ProductResponseDTO> getProductById(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
+    }
+
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<ProductResponseDTO> getProductBySlug(@PathVariable String slug) {
+        return ResponseEntity.ok(productService.getProductBySlug(slug));
+    }
+
+    @GetMapping("/category/{category}")
+    public ResponseEntity<Page<ProductResponseDTO>> getProductsByCategory(
+            @PathVariable String category,
+            @PageableDefault(size = 200) Pageable pageable) {
 
         return ResponseEntity.ok(
-                productService.getProductById(id)
+                productService.getProductsByCategory(category, pageable)
+        );
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<ProductResponseDTO>> searchProducts(
+            @RequestParam(required = false, name = "query") String query,
+            @RequestParam(required = false, name = "search") String search,
+            @PageableDefault(size = 200) Pageable pageable) {
+
+        String searchTerm = query != null ? query : search;
+        return ResponseEntity.ok(
+                productService.searchProducts(searchTerm, pageable)
         );
     }
 
@@ -67,11 +84,8 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(
-            @PathVariable Long id) {
-
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
-
         return ResponseEntity.noContent().build();
     }
 }
