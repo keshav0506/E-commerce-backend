@@ -1,9 +1,6 @@
 package com.keshav.service;
 
-import com.keshav.dto.LoginRequestDTO;
-import com.keshav.dto.LoginResponseDTO;
-import com.keshav.dto.RegisterRequestDTO;
-import com.keshav.dto.RegisterResponseDTO;
+import com.keshav.dto.*;
 import com.keshav.entity.User;
 import com.keshav.exception.EmailAlreadyExistsException;
 import com.keshav.exception.InvalidCredentialsException;
