@@ -43,7 +43,8 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 "/api/auth/register",
-                                "/api/auth/login"
+                                "/api/auth/login",
+                                "/api/seed/**"
                         ).permitAll()
 
 
@@ -77,16 +78,18 @@ public class SecurityConfig {
                         // =========================
 
                         .requestMatchers(
-                                "/api/categories/**"
+                                "/api/categories/**",
+                                "/uploads/**"
                         ).permitAll()
 
 
                         // =========================
-                        // CART
+                        // CART & WISHLIST
                         // =========================
 
                         .requestMatchers(
-                                "/api/cart/**"
+                                "/api/cart/**",
+                                "/api/wishlist/**"
                         ).authenticated()
 
 
