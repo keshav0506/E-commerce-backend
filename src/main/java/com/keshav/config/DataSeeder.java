@@ -2,9 +2,11 @@ package com.keshav.config;
 
 import com.keshav.entity.Category;
 import com.keshav.entity.Product;
+import com.keshav.entity.Review;
 import com.keshav.entity.User;
 import com.keshav.repository.CategoryRepository;
 import com.keshav.repository.ProductRepository;
+import com.keshav.repository.ReviewRepository;
 import com.keshav.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +14,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -25,15 +28,18 @@ public class DataSeeder implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final ReviewRepository reviewRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(CategoryRepository categoryRepository,
                       ProductRepository productRepository,
                       UserRepository userRepository,
+                      ReviewRepository reviewRepository,
                       PasswordEncoder passwordEncoder) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.reviewRepository = reviewRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -49,6 +55,32 @@ public class DataSeeder implements CommandLineRunner {
         } else {
             log.info("Database already seeded with {} categories and {} products.",
                     categoryRepository.count(), productRepository.count());
+        }
+        seedSampleReviewsIfMissing();
+    }
+
+    public synchronized void seedSampleReviewsIfMissing() {
+        if (reviewRepository.count() == 0 && productRepository.count() > 0 && userRepository.count() > 0) {
+            User user = userRepository.findByEmail("user@ecommerce.com").orElse(null);
+            if (user == null) return;
+
+            List<Product> prods = productRepository.findAll();
+            if (prods.isEmpty()) return;
+
+            Product p1 = prods.get(0);
+            Review r1 = new Review(null, p1, user, 5, "Absolutely Stunning Quality!",
+                    "The build quality and screen are mind-blowing. Battery lasts for days easily. Highly recommended!",
+                    true, LocalDateTime.now().minusDays(2), LocalDateTime.now().minusDays(2));
+            reviewRepository.save(r1);
+
+            if (prods.size() > 1) {
+                Product p2 = prods.get(1);
+                Review r2 = new Review(null, p2, user, 5, "Pure Bliss & Crystal Clear Sound",
+                        "Active noise cancellation is top notch. Super comfortable memory foam earcups!",
+                        true, LocalDateTime.now().minusDays(1), LocalDateTime.now().minusDays(1));
+                reviewRepository.save(r2);
+            }
+            log.info("Seeded initial verified customer reviews.");
         }
     }
 

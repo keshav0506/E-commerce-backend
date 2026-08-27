@@ -49,6 +49,30 @@ public class SecurityConfig {
 
 
                         // =========================
+                        // REVIEWS (CUSTOMER & PUBLIC)
+                        // =========================
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/products/*/reviews"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/products/*/reviews"
+                        ).authenticated()
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/products/*/reviews"
+                        ).authenticated()
+
+                        .requestMatchers(
+                                "/api/admin/reviews/**"
+                        ).hasRole("ADMIN")
+
+
+                        // =========================
                         // PRODUCTS
                         // =========================
 
