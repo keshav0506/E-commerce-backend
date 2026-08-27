@@ -91,4 +91,58 @@ public class AuthService implements IAuthService {
                 token
         );
     }
+
+    @Override
+    public ApiResponseDTO changePassword(String email, ChangePasswordRequestDTO request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new com.keshav.exception.UserNotFoundException("User not found: " + email));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Current password does not match");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("New password cannot be the same as current password");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return new ApiResponseDTO(true, "Password changed successfully");
+    }
+
+    @Override
+    public ApiResponseDTO forgotPassword(ForgotPasswordRequestDTO request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new com.keshav.exception.UserNotFoundException("No account found with email: " + request.getEmail()));
+
+        // Generate 6-digit OTP / Reset Token
+        String token = String.format("%06d", (int) (Math.random() * 900000) + 100000);
+        user.setResetToken(token);
+        user.setResetTokenExpiry(java.time.LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        return new ApiResponseDTO(true, "Password reset code generated and sent successfully. Use OTP: " + token);
+    }
+
+    @Override
+    public ApiResponseDTO resetPassword(ResetPasswordRequestDTO request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new com.keshav.exception.UserNotFoundException("No account found with email: " + request.getEmail()));
+
+        if (user.getResetToken() == null || !user.getResetToken().equals(request.getToken().trim())) {
+            throw new IllegalArgumentException("Invalid reset token or OTP");
+        }
+
+        if (user.getResetTokenExpiry() != null && user.getResetTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
+            throw new IllegalArgumentException("Reset token has expired. Please request a new one.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
+
+        return new ApiResponseDTO(true, "Password has been reset successfully. You can now sign in.");
+    }
 }

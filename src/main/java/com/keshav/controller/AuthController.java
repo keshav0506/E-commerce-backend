@@ -1,13 +1,11 @@
 package com.keshav.controller;
 
-import com.keshav.dto.LoginRequestDTO;
-import com.keshav.dto.LoginResponseDTO;
-import com.keshav.dto.RegisterRequestDTO;
-import com.keshav.dto.RegisterResponseDTO;
+import com.keshav.dto.*;
 import com.keshav.service.IAuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -35,6 +33,39 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 authService.login(request)
+        );
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponseDTO> changePassword(
+            @Valid @RequestBody ChangePasswordRequestDTO request,
+            Authentication authentication) {
+
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponseDTO(false, "Authentication required"));
+        }
+
+        return ResponseEntity.ok(
+                authService.changePassword(authentication.getName(), request)
+        );
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponseDTO> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequestDTO request) {
+
+        return ResponseEntity.ok(
+                authService.forgotPassword(request)
+        );
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponseDTO> resetPassword(
+            @Valid @RequestBody ResetPasswordRequestDTO request) {
+
+        return ResponseEntity.ok(
+                authService.resetPassword(request)
         );
     }
 }

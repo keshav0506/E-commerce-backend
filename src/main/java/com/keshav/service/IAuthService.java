@@ -1,12 +1,16 @@
 package com.keshav.service;
 
-import com.keshav.dto.LoginRequestDTO;
-import com.keshav.dto.LoginResponseDTO;
-import com.keshav.dto.RegisterRequestDTO;
-import com.keshav.dto.RegisterResponseDTO;
+import com.keshav.dto.*;
 
 public interface IAuthService {
 
     RegisterResponseDTO register(RegisterRequestDTO request);
+
     LoginResponseDTO login(LoginRequestDTO request);
+
+    ApiResponseDTO changePassword(String email, ChangePasswordRequestDTO request);
+
+    ApiResponseDTO forgotPassword(ForgotPasswordRequestDTO request);
+
+    ApiResponseDTO resetPassword(ResetPasswordRequestDTO request);
 }
