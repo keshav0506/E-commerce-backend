@@ -103,6 +103,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 "/api/categories/**",
+                                "/api/contact",
                                 "/uploads/**"
                         ).permitAll()
 
