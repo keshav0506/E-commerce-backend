@@ -36,7 +36,7 @@ public class ProductController {
     public ResponseEntity<Page<ProductResponseDTO>> getAllProducts(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long categoryId,
-            Pageable pageable) {
+            @org.springframework.data.web.PageableDefault(size = 200) Pageable pageable) {
 
         return ResponseEntity.ok(
                 productService.getAllProducts(
