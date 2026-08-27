@@ -9,6 +9,12 @@ services:
     envVars:
       - key: PORT
         value: 8081
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/test?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
+      - key: SPRING_DATASOURCE_USERNAME
+        value: 2Q3f9B6Jhrcpvzh.root
+      - key: SPRING_DATASOURCE_PASSWORD
+        value: jlYa1VTP4fSjNOHS
       - key: CLOUDINARY_CLOUD_NAME
         value: oqmadwpj
       - key: CLOUDINARY_API_KEY
@@ -19,9 +25,3 @@ services:
         value: rzp_test_TU1wmyCS0s01Fo
       - key: RAZORPAY_KEY_SECRET
         value: bthxtLU6zVvljAkIn95L7XSw
-      - key: SPRING_DATASOURCE_URL
-        sync: false
-      - key: SPRING_DATASOURCE_USERNAME
-        sync: false
-      - key: SPRING_DATASOURCE_PASSWORD
-        sync: false
