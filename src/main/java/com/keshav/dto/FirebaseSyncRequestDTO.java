@@ -13,4 +13,6 @@ public class FirebaseSyncRequestDTO {
     private String idToken;
     private String name;
     private String email;
+    private String guestSessionId;
 }
+

@@ -6,7 +6,6 @@ import com.keshav.entity.Product;
 import com.keshav.entity.User;
 import com.keshav.entity.WishlistItem;
 import com.keshav.exception.ProductNotFoundException;
-import com.keshav.exception.UserNotFoundException;
 import com.keshav.repository.ProductRepository;
 import com.keshav.repository.UserRepository;
 import com.keshav.repository.WishlistItemRepository;
@@ -15,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -35,72 +35,124 @@ public class WishlistService implements IWishlistService {
         this.userRepository = userRepository;
     }
 
-    private User getCurrentUser() {
+    private Optional<User> getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new UserNotFoundException("User is not authenticated");
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return Optional.empty();
         }
-
-        String email = authentication.getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+        return userRepository.findByEmail(authentication.getName());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public WishlistResponseDTO getMyWishlist() {
-        User user = getCurrentUser();
-        List<WishlistItem> items = wishlistRepository.findByUserOrderByCreatedAtDesc(user);
+    public WishlistResponseDTO getMyWishlist(String guestSessionId) {
+        Optional<User> userOpt = getAuthenticatedUser();
+        List<WishlistItem> items;
+        if (userOpt.isPresent()) {
+            items = wishlistRepository.findByUserOrderByCreatedAtDesc(userOpt.get());
+        } else {
+            String validGuestId = (guestSessionId != null && !guestSessionId.isBlank()) ? guestSessionId.trim() : "guest_default";
+            items = wishlistRepository.findByGuestSessionIdOrderByCreatedAtDesc(validGuestId);
+        }
         return buildWishlistResponse(items);
     }
 
     @Override
-    public WishlistResponseDTO addToWishlist(Long productId) {
-        User user = getCurrentUser();
+    public WishlistResponseDTO addToWishlist(Long productId, String guestSessionId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
 
-        if (!wishlistRepository.existsByUserAndProduct(user, product)) {
-            WishlistItem item = new WishlistItem(user, product);
-            wishlistRepository.save(item);
-        }
-
-        return getMyWishlist();
-    }
-
-    @Override
-    public WishlistResponseDTO removeFromWishlist(Long productId) {
-        User user = getCurrentUser();
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
-
-        wishlistRepository.findByUserAndProduct(user, product)
-                .ifPresent(wishlistRepository::delete);
-
-        return getMyWishlist();
-    }
-
-    @Override
-    public WishlistResponseDTO toggleWishlist(Long productId) {
-        User user = getCurrentUser();
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
-
-        Optional<WishlistItem> existing = wishlistRepository.findByUserAndProduct(user, product);
-        if (existing.isPresent()) {
-            wishlistRepository.delete(existing.get());
+        Optional<User> userOpt = getAuthenticatedUser();
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            if (!wishlistRepository.existsByUserAndProduct(user, product)) {
+                WishlistItem item = new WishlistItem(user, product);
+                wishlistRepository.save(item);
+            }
         } else {
-            WishlistItem item = new WishlistItem(user, product);
-            wishlistRepository.save(item);
+            String validGuestId = (guestSessionId != null && !guestSessionId.isBlank()) ? guestSessionId.trim() : "guest_default";
+            if (!wishlistRepository.existsByGuestSessionIdAndProduct(validGuestId, product)) {
+                WishlistItem item = new WishlistItem(validGuestId, product);
+                wishlistRepository.save(item);
+            }
         }
 
-        return getMyWishlist();
+        return getMyWishlist(guestSessionId);
     }
 
     @Override
-    public void clearWishlist() {
-        User user = getCurrentUser();
-        wishlistRepository.deleteByUser(user);
+    public WishlistResponseDTO removeFromWishlist(Long productId, String guestSessionId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
+
+        Optional<User> userOpt = getAuthenticatedUser();
+        if (userOpt.isPresent()) {
+            wishlistRepository.findByUserAndProduct(userOpt.get(), product)
+                    .ifPresent(wishlistRepository::delete);
+        } else {
+            String validGuestId = (guestSessionId != null && !guestSessionId.isBlank()) ? guestSessionId.trim() : "guest_default";
+            wishlistRepository.findByGuestSessionIdAndProduct(validGuestId, product)
+                    .ifPresent(wishlistRepository::delete);
+        }
+
+        return getMyWishlist(guestSessionId);
+    }
+
+    @Override
+    public WishlistResponseDTO toggleWishlist(Long productId, String guestSessionId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
+
+        Optional<User> userOpt = getAuthenticatedUser();
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            Optional<WishlistItem> existing = wishlistRepository.findByUserAndProduct(user, product);
+            if (existing.isPresent()) {
+                wishlistRepository.delete(existing.get());
+            } else {
+                WishlistItem item = new WishlistItem(user, product);
+                wishlistRepository.save(item);
+            }
+        } else {
+            String validGuestId = (guestSessionId != null && !guestSessionId.isBlank()) ? guestSessionId.trim() : "guest_default";
+            Optional<WishlistItem> existing = wishlistRepository.findByGuestSessionIdAndProduct(validGuestId, product);
+            if (existing.isPresent()) {
+                wishlistRepository.delete(existing.get());
+            } else {
+                WishlistItem item = new WishlistItem(validGuestId, product);
+                wishlistRepository.save(item);
+            }
+        }
+
+        return getMyWishlist(guestSessionId);
+    }
+
+    @Override
+    public void clearWishlist(String guestSessionId) {
+        Optional<User> userOpt = getAuthenticatedUser();
+        if (userOpt.isPresent()) {
+            wishlistRepository.deleteByUser(userOpt.get());
+        } else {
+            String validGuestId = (guestSessionId != null && !guestSessionId.isBlank()) ? guestSessionId.trim() : "guest_default";
+            wishlistRepository.deleteByGuestSessionId(validGuestId);
+        }
+    }
+
+    @Override
+    public void mergeGuestWishlist(User user, String guestSessionId) {
+        if (guestSessionId == null || guestSessionId.isBlank()) return;
+
+        List<WishlistItem> guestItems = wishlistRepository.findByGuestSessionIdOrderByCreatedAtDesc(guestSessionId.trim());
+        if (guestItems.isEmpty()) return;
+
+        for (WishlistItem gItem : guestItems) {
+            if (!wishlistRepository.existsByUserAndProduct(user, gItem.getProduct())) {
+                WishlistItem userItem = new WishlistItem(user, gItem.getProduct());
+                wishlistRepository.save(userItem);
+            }
+        }
+
+        wishlistRepository.deleteByGuestSessionId(guestSessionId.trim());
     }
 
     private WishlistResponseDTO buildWishlistResponse(List<WishlistItem> items) {

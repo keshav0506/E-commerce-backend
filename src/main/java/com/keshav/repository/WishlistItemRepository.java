@@ -16,17 +16,27 @@ public interface WishlistItemRepository extends JpaRepository<WishlistItem, Long
 
     List<WishlistItem> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    List<WishlistItem> findByGuestSessionIdOrderByCreatedAtDesc(String guestSessionId);
+
     Optional<WishlistItem> findByUserAndProduct(User user, Product product);
 
     Optional<WishlistItem> findByUserIdAndProductId(Long userId, Long productId);
+
+    Optional<WishlistItem> findByGuestSessionIdAndProduct(String guestSessionId, Product product);
 
     boolean existsByUserAndProduct(User user, Product product);
 
     boolean existsByUserIdAndProductId(Long userId, Long productId);
 
+    boolean existsByGuestSessionIdAndProduct(String guestSessionId, Product product);
+
     void deleteByUserAndProduct(User user, Product product);
 
     void deleteByUserIdAndProductId(Long userId, Long productId);
 
+    void deleteByGuestSessionIdAndProduct(String guestSessionId, Product product);
+
     void deleteByUser(User user);
+
+    void deleteByGuestSessionId(String guestSessionId);
 }

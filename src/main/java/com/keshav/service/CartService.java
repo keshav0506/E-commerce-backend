@@ -17,10 +17,14 @@ import com.keshav.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
+@Transactional
 public class CartService implements ICartService {
 
     private final CartRepository cartRepository;
@@ -40,196 +44,170 @@ public class CartService implements ICartService {
         this.userRepository = userRepository;
     }
 
+    private Optional<User> getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return Optional.empty();
+        }
+        return userRepository.findByEmail(authentication.getName());
+    }
+
+    private Cart getOrCreateCart(String guestSessionId) {
+        Optional<User> userOpt = getAuthenticatedUser();
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            return cartRepository.findByUser(user)
+                    .orElseGet(() -> {
+                        Cart c = new Cart();
+                        c.setUser(user);
+                        return cartRepository.save(c);
+                    });
+        }
+
+        String validGuestId = (guestSessionId != null && !guestSessionId.isBlank())
+                ? guestSessionId.trim()
+                : "guest_default";
+
+        return cartRepository.findByGuestSessionId(validGuestId)
+                .orElseGet(() -> {
+                    Cart c = new Cart();
+                    c.setGuestSessionId(validGuestId);
+                    return cartRepository.save(c);
+                });
+    }
+
     @Override
-    public CartResponseDTO getMyCart() {
-
-        User user = getCurrentUser();
-
-        Cart cart = cartRepository.findByUser(user)
-                .orElseGet(() -> createCart(user));
-
+    public CartResponseDTO getMyCart(String guestSessionId) {
+        Cart cart = getOrCreateCart(guestSessionId);
         return convertToResponseDTO(cart);
     }
 
     @Override
     public CartResponseDTO addToCart(
-            CartItemRequestDTO request) {
-
-        User user = getCurrentUser();
+            CartItemRequestDTO request,
+            String guestSessionId) {
 
         Product product = productRepository
                 .findById(request.getProductId())
                 .orElseThrow(() ->
                         new ProductNotFoundException(
-                                "Product not found with id: "
-                                        + request.getProductId()
+                                "Product not found with id: " + request.getProductId()
                         )
                 );
 
-        Cart cart = cartRepository.findByUser(user)
-                .orElseGet(() -> createCart(user));
+        Cart cart = getOrCreateCart(guestSessionId);
 
-        CartItem cartItem =
-                cartItemRepository
-                        .findByCartIdAndProductId(
-                                cart.getId(),
-                                product.getId()
-                        )
-                        .orElse(null);
+        CartItem cartItem = cartItemRepository
+                .findByCartIdAndProductId(cart.getId(), product.getId())
+                .orElse(null);
 
         if (cartItem != null) {
-
-            cartItem.setQuantity(
-                    cartItem.getQuantity()
-                            + request.getQuantity()
-            );
-
+            cartItem.setQuantity(cartItem.getQuantity() + request.getQuantity());
         } else {
-
             cartItem = new CartItem();
-
             cartItem.setCart(cart);
             cartItem.setProduct(product);
             cartItem.setQuantity(request.getQuantity());
         }
 
         cartItemRepository.save(cartItem);
-
         return convertToResponseDTO(cart);
     }
 
     @Override
     public CartResponseDTO updateCartItem(
             Long cartItemId,
-            int quantity) {
+            int quantity,
+            String guestSessionId) {
 
-        User user = getCurrentUser();
+        Cart cart = getOrCreateCart(guestSessionId);
 
-        Cart cart = cartRepository.findByUser(user)
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() ->
-                        new CartNotFoundException(
-                                "Cart not found for current user"
-                        )
+                        new CartItemNotFoundException("Cart item not found with id: " + cartItemId)
                 );
 
-        CartItem cartItem =
-                cartItemRepository.findById(cartItemId)
-                        .orElseThrow(() ->
-                                new CartItemNotFoundException(
-                                        "Cart item not found with id: "
-                                                + cartItemId
-                                )
-                        );
-
-        if (!cartItem.getCart().getId()
-                .equals(cart.getId())) {
-
-            throw new CartItemNotFoundException(
-                    "Cart item not found in your cart"
-            );
+        if (!cartItem.getCart().getId().equals(cart.getId())) {
+            throw new CartItemNotFoundException("Cart item not found in your cart");
         }
 
         if (quantity < 1) {
-            throw new IllegalArgumentException(
-                    "Quantity must be at least 1"
-            );
+            cartItemRepository.delete(cartItem);
+        } else {
+            cartItem.setQuantity(quantity);
+            cartItemRepository.save(cartItem);
         }
-
-        cartItem.setQuantity(quantity);
-
-        cartItemRepository.save(cartItem);
 
         return convertToResponseDTO(cart);
     }
 
     @Override
-    public void removeCartItem(Long cartItemId) {
+    public void removeCartItem(Long cartItemId, String guestSessionId) {
+        Cart cart = getOrCreateCart(guestSessionId);
 
-        User user = getCurrentUser();
-
-        Cart cart = cartRepository.findByUser(user)
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() ->
-                        new CartNotFoundException(
-                                "Cart not found for current user"
-                        )
+                        new CartItemNotFoundException("Cart item not found with id: " + cartItemId)
                 );
 
-        CartItem cartItem =
-                cartItemRepository.findById(cartItemId)
-                        .orElseThrow(() ->
-                                new CartItemNotFoundException(
-                                        "Cart item not found with id: "
-                                                + cartItemId
-                                )
-                        );
-
-        if (!cartItem.getCart().getId()
-                .equals(cart.getId())) {
-
-            throw new RuntimeException(
-                    "Cart item does not belong to your cart"
-            );
+        if (!cartItem.getCart().getId().equals(cart.getId())) {
+            throw new RuntimeException("Cart item does not belong to your cart");
         }
 
         cartItemRepository.delete(cartItem);
     }
 
     @Override
-    public void clearCart() {
-
-        User user = getCurrentUser();
-
-        Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() ->
-                        new RuntimeException("Cart not found")
-                );
-
+    public void clearCart(String guestSessionId) {
+        Cart cart = getOrCreateCart(guestSessionId);
         cart.getItems().clear();
-
         cartRepository.save(cart);
     }
 
-    private Cart createCart(User user) {
+    @Override
+    public void mergeGuestCart(User user, String guestSessionId) {
+        if (guestSessionId == null || guestSessionId.isBlank()) return;
 
-        Cart cart = new Cart();
+        Optional<Cart> guestCartOpt = cartRepository.findByGuestSessionId(guestSessionId.trim());
+        if (guestCartOpt.isEmpty() || guestCartOpt.get().getItems().isEmpty()) return;
 
-        cart.setUser(user);
+        Cart guestCart = guestCartOpt.get();
+        Cart userCart = cartRepository.findByUser(user)
+                .orElseGet(() -> {
+                    Cart c = new Cart();
+                    c.setUser(user);
+                    return cartRepository.save(c);
+                });
 
-        return cartRepository.save(cart);
+        for (CartItem gItem : guestCart.getItems()) {
+            Optional<CartItem> existingItemOpt = cartItemRepository
+                    .findByCartIdAndProductId(userCart.getId(), gItem.getProduct().getId());
+
+            if (existingItemOpt.isPresent()) {
+                CartItem existing = existingItemOpt.get();
+                existing.setQuantity(existing.getQuantity() + gItem.getQuantity());
+                cartItemRepository.save(existing);
+            } else {
+                CartItem newItem = new CartItem();
+                newItem.setCart(userCart);
+                newItem.setProduct(gItem.getProduct());
+                newItem.setQuantity(gItem.getQuantity());
+                cartItemRepository.save(newItem);
+            }
+        }
+
+        cartRepository.delete(guestCart);
     }
 
-    private User getCurrentUser() {
+    private CartResponseDTO convertToResponseDTO(Cart cart) {
+        List<CartItemResponseDTO> items = cart.getItems()
+                .stream()
+                .map(this::convertItemToDTO)
+                .toList();
 
-        Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
-
-        String email = authentication.getName();
-
-        return userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "User not found"
-                        )
-                );
-    }
-
-    private CartResponseDTO convertToResponseDTO(
-            Cart cart) {
-
-        List<CartItemResponseDTO> items =
-                cart.getItems()
-                        .stream()
-                        .map(this::convertItemToDTO)
-                        .toList();
-
-        double totalAmount =
-                items.stream()
-                        .mapToDouble(
-                                CartItemResponseDTO::getTotalPrice
-                        )
-                        .sum();
+        double totalAmount = items.stream()
+                .mapToDouble(CartItemResponseDTO::getTotalPrice)
+                .sum();
 
         return new CartResponseDTO(
                 cart.getId(),
@@ -238,13 +216,9 @@ public class CartService implements ICartService {
         );
     }
 
-    private CartItemResponseDTO convertItemToDTO(
-            CartItem item) {
-
+    private CartItemResponseDTO convertItemToDTO(CartItem item) {
         Product product = item.getProduct();
-
-        double totalPrice =
-                product.getPrice() * item.getQuantity();
+        double totalPrice = product.getPrice() * item.getQuantity();
 
         return new CartItemResponseDTO(
                 item.getId(),

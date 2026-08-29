@@ -1,16 +1,20 @@
 package com.keshav.service;
 
 import com.keshav.dto.WishlistResponseDTO;
+import com.keshav.entity.User;
 
 public interface IWishlistService {
 
-    WishlistResponseDTO getMyWishlist();
+    WishlistResponseDTO getMyWishlist(String guestSessionId);
 
-    WishlistResponseDTO addToWishlist(Long productId);
+    WishlistResponseDTO addToWishlist(Long productId, String guestSessionId);
 
-    WishlistResponseDTO removeFromWishlist(Long productId);
+    WishlistResponseDTO removeFromWishlist(Long productId, String guestSessionId);
 
-    WishlistResponseDTO toggleWishlist(Long productId);
+    WishlistResponseDTO toggleWishlist(Long productId, String guestSessionId);
 
-    void clearWishlist();
+    void clearWishlist(String guestSessionId);
+
+    void mergeGuestWishlist(User user, String guestSessionId);
 }
+

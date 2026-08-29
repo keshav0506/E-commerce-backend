@@ -18,9 +18,12 @@ public class Cart {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = true)
     private User user;
+
+    @Column(name = "guest_session_id", length = 64)
+    private String guestSessionId;
 
     @OneToMany(
             mappedBy = "cart",
@@ -29,3 +32,4 @@ public class Cart {
     )
     private List<CartItem> items = new ArrayList<>();
 }
+

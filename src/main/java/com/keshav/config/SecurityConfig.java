@@ -123,13 +123,13 @@ public class SecurityConfig {
 
 
                         // =========================
-                        // CART & WISHLIST
+                        // CART & WISHLIST (AUTHENTICATED OR GUEST SESSION)
                         // =========================
 
                         .requestMatchers(
                                 "/api/cart/**",
                                 "/api/wishlist/**"
-                        ).authenticated()
+                        ).permitAll()
 
 
                         // =========================

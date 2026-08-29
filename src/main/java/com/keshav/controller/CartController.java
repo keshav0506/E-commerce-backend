@@ -19,47 +19,53 @@ public class CartController {
     }
 
     @GetMapping
-    public ResponseEntity<CartResponseDTO> getMyCart() {
+    public ResponseEntity<CartResponseDTO> getMyCart(
+            @RequestHeader(value = "X-Guest-Session-ID", required = false) String guestSessionId) {
 
         return ResponseEntity.ok(
-                cartService.getMyCart()
+                cartService.getMyCart(guestSessionId)
         );
     }
 
     @PostMapping("/items")
     public ResponseEntity<CartResponseDTO> addToCart(
-            @Valid @RequestBody CartItemRequestDTO request) {
+            @Valid @RequestBody CartItemRequestDTO request,
+            @RequestHeader(value = "X-Guest-Session-ID", required = false) String guestSessionId) {
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(cartService.addToCart(request));
+                .body(cartService.addToCart(request, guestSessionId));
     }
 
     @PutMapping("/items/{cartItemId}")
     public ResponseEntity<CartResponseDTO> updateCartItem(
             @PathVariable Long cartItemId,
-            @RequestParam int quantity) {
+            @RequestParam int quantity,
+            @RequestHeader(value = "X-Guest-Session-ID", required = false) String guestSessionId) {
 
         return ResponseEntity.ok(
                 cartService.updateCartItem(
                         cartItemId,
-                        quantity
+                        quantity,
+                        guestSessionId
                 )
         );
     }
 
     @DeleteMapping("/items/{cartItemId}")
     public ResponseEntity<Void> removeCartItem(
-            @PathVariable Long cartItemId) {
+            @PathVariable Long cartItemId,
+            @RequestHeader(value = "X-Guest-Session-ID", required = false) String guestSessionId) {
 
-        cartService.removeCartItem(cartItemId);
+        cartService.removeCartItem(cartItemId, guestSessionId);
 
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping
-    public ResponseEntity<Void> clearCart() {
+    public ResponseEntity<Void> clearCart(
+            @RequestHeader(value = "X-Guest-Session-ID", required = false) String guestSessionId) {
 
-        cartService.clearCart();
+        cartService.clearCart(guestSessionId);
 
         return ResponseEntity.noContent().build();
     }

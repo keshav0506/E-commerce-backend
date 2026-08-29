@@ -16,17 +16,23 @@ public class AuthService implements IAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final com.keshav.security.FirebaseTokenService firebaseTokenService;
+    private final ICartService cartService;
+    private final IWishlistService wishlistService;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            com.keshav.security.FirebaseTokenService firebaseTokenService) {
+            com.keshav.security.FirebaseTokenService firebaseTokenService,
+            ICartService cartService,
+            IWishlistService wishlistService) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.firebaseTokenService = firebaseTokenService;
+        this.cartService = cartService;
+        this.wishlistService = wishlistService;
     }
 
     @Override
@@ -50,6 +56,9 @@ public class AuthService implements IAuthService {
         user.setRole("CUSTOMER");
 
         User savedUser = userRepository.save(user);
+
+        // Merge guest cart & wishlist if guestSessionId exists
+        mergeGuestData(savedUser, request.getGuestSessionId());
 
         return new RegisterResponseDTO(
                 savedUser.getId(),
@@ -83,6 +92,9 @@ public class AuthService implements IAuthService {
                 user.getRole()
         );
 
+        // Merge guest cart & wishlist if guestSessionId exists
+        mergeGuestData(user, request.getGuestSessionId());
+
         return new LoginResponseDTO(
                 user.getId(),
                 user.getName(),
@@ -114,6 +126,11 @@ public class AuthService implements IAuthService {
             user = firebaseTokenService.syncUser(uid, email, request.getName());
         }
 
+        // Merge guest cart & wishlist if guestSessionId exists
+        if (request != null) {
+            mergeGuestData(user, request.getGuestSessionId());
+        }
+
         String appToken = jwtService.generateToken(user.getEmail(), user.getRole());
 
         return new LoginResponseDTO(
@@ -123,6 +140,16 @@ public class AuthService implements IAuthService {
                 user.getRole(),
                 appToken
         );
+    }
+
+    private void mergeGuestData(User user, String guestSessionId) {
+        if (guestSessionId == null || guestSessionId.isBlank()) return;
+        try {
+            cartService.mergeGuestCart(user, guestSessionId);
+            wishlistService.mergeGuestWishlist(user, guestSessionId);
+        } catch (Exception e) {
+            System.err.println("Warning: failed to merge guest cart/wishlist: " + e.getMessage());
+        }
     }
 
     @Override

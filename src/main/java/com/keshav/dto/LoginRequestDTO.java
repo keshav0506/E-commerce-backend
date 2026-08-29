@@ -13,4 +13,7 @@ public class LoginRequestDTO {
 
     @NotBlank
     private String password;
+
+    private String guestSessionId;
 }
+

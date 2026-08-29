@@ -9,9 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "wishlist_items", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"user_id", "product_id"})
-})
+@Table(name = "wishlist_items")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,8 +21,11 @@ public class WishlistItem {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = true)
     private User user;
+
+    @Column(name = "guest_session_id", length = 64)
+    private String guestSessionId;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "product_id", nullable = false)
@@ -38,4 +39,11 @@ public class WishlistItem {
         this.product = product;
         this.createdAt = LocalDateTime.now();
     }
+
+    public WishlistItem(String guestSessionId, Product product) {
+        this.guestSessionId = guestSessionId;
+        this.product = product;
+        this.createdAt = LocalDateTime.now();
+    }
 }
+
