@@ -35,8 +35,8 @@ public class EmailService {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
-    public EmailService(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public EmailService() {
+        this.objectMapper = new ObjectMapper();
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
