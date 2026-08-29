@@ -58,6 +58,7 @@ public class SecurityConfig {
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
                                 "/api/suppliers/apply",
+                                "/api/suppliers/*/public-catalog",
                                 "/api/seed/**",
                                 "/api/images/**"
                         ).permitAll()

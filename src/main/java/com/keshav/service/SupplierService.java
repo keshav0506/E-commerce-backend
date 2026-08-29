@@ -33,6 +33,7 @@ public class SupplierService implements ISupplierService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ProductService productService;
 
     public SupplierService(
             SupplierProfileRepository supplierProfileRepository,
@@ -42,7 +43,8 @@ public class SupplierService implements ISupplierService {
             SupplierNotificationRepository notificationRepository,
             ProductRepository productRepository,
             CategoryRepository categoryRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            ProductService productService) {
         this.supplierProfileRepository = supplierProfileRepository;
         this.userRepository = userRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
@@ -51,6 +53,7 @@ public class SupplierService implements ISupplierService {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.passwordEncoder = passwordEncoder;
+        this.productService = productService;
     }
 
     @Override
@@ -555,5 +558,37 @@ public class SupplierService implements ISupplierService {
         ));
 
         return SupplierProductDTO.fromEntity(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SupplierPublicCatalogDTO getPublicSupplierCatalog(Long supplierId, String search, Pageable pageable) {
+        SupplierProfile supplier = supplierProfileRepository.findById(supplierId)
+                .orElseThrow(() -> new ResourceNotFoundException("Supplier not found with ID: " + supplierId));
+
+        Page<Product> productsPage;
+        if (search != null && !search.trim().isEmpty()) {
+            productsPage = productRepository.findBySupplierIdAndNameContainingIgnoreCase(supplierId, search.trim(), pageable);
+        } else {
+            productsPage = productRepository.findBySupplierId(supplierId, pageable);
+        }
+
+        Page<ProductResponseDTO> dtoPage = productsPage.map(productService::convertToResponseDTO);
+
+        SupplierSummaryDTO supplierSummary = SupplierSummaryDTO.builder()
+                .id(supplier.getId())
+                .businessName(supplier.getBusinessName())
+                .businessEmail(supplier.getBusinessEmail())
+                .category(supplier.getCategory())
+                .city(supplier.getCity())
+                .state(supplier.getState())
+                .status(supplier.getStatus() != null ? supplier.getStatus().name() : "APPROVED")
+                .build();
+
+        return SupplierPublicCatalogDTO.builder()
+                .supplier(supplierSummary)
+                .products(dtoPage)
+                .totalProducts(productsPage.getTotalElements())
+                .build();
     }
 }

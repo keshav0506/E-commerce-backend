@@ -108,7 +108,6 @@ public class ProductService implements IProductService {
     }
 
     @Override
-    @Cacheable(value = "productDetails", key = "#id")
     public ProductResponseDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
@@ -242,6 +241,106 @@ public class ProductService implements IProductService {
             dto.setCategoryName(product.getCategory().getName());
             dto.setCategorySlug(product.getCategory().getName().toLowerCase(Locale.ROOT).replaceAll("\\s+", "-"));
         }
+
+        if (product.getSupplier() != null) {
+            com.keshav.entity.SupplierProfile sp = product.getSupplier();
+            dto.setSupplier(com.keshav.dto.SupplierSummaryDTO.builder()
+                    .id(sp.getId())
+                    .businessName(sp.getBusinessName())
+                    .businessEmail(sp.getBusinessEmail())
+                    .category(sp.getCategory())
+                    .city(sp.getCity())
+                    .state(sp.getState())
+                    .status(sp.getStatus() != null ? sp.getStatus().name() : "APPROVED")
+                    .build());
+        } else if (product.getCategory() != null) {
+            String catName = product.getCategory().getName();
+            String email = catName.toLowerCase().replaceAll("\\s+", "") + "Supplier@shoply.com";
+            dto.setSupplier(com.keshav.dto.SupplierSummaryDTO.builder()
+                    .id(product.getCategory().getId())
+                    .businessName(catName + " Supplier")
+                    .businessEmail(email)
+                    .category(catName)
+                    .city("National Hub")
+                    .state("India")
+                    .status("APPROVED")
+                    .build());
+        }
+
+        // Generate HATEOAS Hypermedia Links
+        java.util.Map<String, com.keshav.dto.HateoasLinkDTO> links = new java.util.LinkedHashMap<>();
+        Long prodId = product.getId();
+        Long supplierId = product.getSupplier() != null ? product.getSupplier().getId() : 1L;
+        String supplierName = product.getSupplier() != null && product.getSupplier().getBusinessName() != null 
+                ? product.getSupplier().getBusinessName() 
+                : (product.getCategory() != null ? product.getCategory().getName() + " Supplier" : "Brand Supplier");
+        String categoryName = product.getCategory() != null ? product.getCategory().getName() : "All";
+
+        links.put("self", com.keshav.dto.HateoasLinkDTO.builder()
+                .rel("self")
+                .href("/api/products/" + prodId)
+                .method("GET")
+                .title(product.getName())
+                .description("Canonical product resource representation")
+                .build());
+
+        links.put("moreFromSupplier", com.keshav.dto.HateoasLinkDTO.builder()
+                .rel("moreFromSupplier")
+                .href("/api/suppliers/" + supplierId + "/public-catalog")
+                .method("GET")
+                .title("Get more from " + supplierName)
+                .description("Explore full paginated wholesale catalog from " + supplierName)
+                .build());
+
+        links.put("categoryProducts", com.keshav.dto.HateoasLinkDTO.builder()
+                .rel("categoryProducts")
+                .href("/api/products?category=" + categoryName)
+                .method("GET")
+                .title("Explore all in " + categoryName)
+                .description("Discover related offerings within the " + categoryName + " department")
+                .build());
+
+        links.put("emiOptions", com.keshav.dto.HateoasLinkDTO.builder()
+                .rel("emiOptions")
+                .href("/api/products/" + prodId + "/emi-plans")
+                .method("GET")
+                .title("EMI Financing & Instant Installment Plans")
+                .description("Flexible 0% interest and low-cost monthly financing breakdown")
+                .build());
+
+        links.put("specifications", com.keshav.dto.HateoasLinkDTO.builder()
+                .rel("specifications")
+                .href("/api/products/" + prodId + "/specs")
+                .method("GET")
+                .title("See More Info / Technical Sheet")
+                .description("Full technical dimensions, material composition, origin, and certifications")
+                .build());
+
+        links.put("deliveryEstimate", com.keshav.dto.HateoasLinkDTO.builder()
+                .rel("deliveryEstimate")
+                .href("/api/products/" + prodId + "/delivery-estimate")
+                .method("GET")
+                .title("Check Delivery SLA & Express Shipping")
+                .description("Real-time courier pincode SLA calculation")
+                .build());
+
+        links.put("bulkInquiry", com.keshav.dto.HateoasLinkDTO.builder()
+                .rel("bulkInquiry")
+                .href("/api/suppliers/" + supplierId + "/quote")
+                .method("POST")
+                .title("Request Wholesale Quotation from " + supplierName)
+                .description("Direct B2B procurement and bulk volume purchase quotation")
+                .build());
+
+        links.put("reviews", com.keshav.dto.HateoasLinkDTO.builder()
+                .rel("reviews")
+                .href("/api/products/" + prodId + "/reviews")
+                .method("GET")
+                .title("Verified Customer Reviews & Ratings")
+                .description("Read community reviews, unboxing photos, and star ratings")
+                .build());
+
+        dto.set_links(links);
 
         dto.setCreatedAt(product.getCreatedAt());
         dto.setUpdatedAt(product.getUpdatedAt());

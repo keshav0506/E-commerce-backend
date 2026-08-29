@@ -49,6 +49,10 @@ public class ProductResponseDTO {
 
     private String categorySlug;
 
+    private SupplierSummaryDTO supplier;
+
+    private java.util.Map<String, HateoasLinkDTO> _links;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

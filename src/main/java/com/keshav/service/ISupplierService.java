@@ -41,4 +41,6 @@ public interface ISupplierService {
     void deleteProduct(Long productId);
 
     SupplierProductDTO updateProductStock(Long productId, int stock);
+
+    SupplierPublicCatalogDTO getPublicSupplierCatalog(Long supplierId, String search, Pageable pageable);
 }

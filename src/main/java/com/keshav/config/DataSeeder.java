@@ -28,6 +28,10 @@ public class DataSeeder implements CommandLineRunner {
     private final WishlistItemRepository wishlistItemRepository;
     private final CartItemRepository cartItemRepository;
     private final OrderItemRepository orderItemRepository;
+    private final com.keshav.repository.SupplierProfileRepository supplierProfileRepository;
+    private final com.keshav.repository.PurchaseOrderRepository purchaseOrderRepository;
+    private final com.keshav.repository.SupplierNotificationRepository supplierNotificationRepository;
+    private final com.keshav.repository.SupplierAuditLogRepository supplierAuditLogRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(CategoryRepository categoryRepository,
@@ -37,6 +41,10 @@ public class DataSeeder implements CommandLineRunner {
                       WishlistItemRepository wishlistItemRepository,
                       CartItemRepository cartItemRepository,
                       OrderItemRepository orderItemRepository,
+                      com.keshav.repository.SupplierProfileRepository supplierProfileRepository,
+                      com.keshav.repository.PurchaseOrderRepository purchaseOrderRepository,
+                      com.keshav.repository.SupplierNotificationRepository supplierNotificationRepository,
+                      com.keshav.repository.SupplierAuditLogRepository supplierAuditLogRepository,
                       PasswordEncoder passwordEncoder) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
@@ -45,6 +53,10 @@ public class DataSeeder implements CommandLineRunner {
         this.wishlistItemRepository = wishlistItemRepository;
         this.cartItemRepository = cartItemRepository;
         this.orderItemRepository = orderItemRepository;
+        this.supplierProfileRepository = supplierProfileRepository;
+        this.purchaseOrderRepository = purchaseOrderRepository;
+        this.supplierNotificationRepository = supplierNotificationRepository;
+        this.supplierAuditLogRepository = supplierAuditLogRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -55,11 +67,13 @@ public class DataSeeder implements CommandLineRunner {
 
     public synchronized void seedIfEmpty() {
         try {
+            seedUsersIfMissing();
+            seedCategorySuppliers();
+            ensureProductsHaveSuppliers();
             if (productRepository.count() > 0 && userRepository.count() > 0) {
-                log.info("Database is already seeded with {} products. Skipping seeding.", productRepository.count());
+                log.info("Database is verified with {} products across all distinct category suppliers.", productRepository.count());
                 return;
             }
-            seedUsersIfMissing();
             seedAll();
             seedSampleReviewsIfMissing();
         } catch (Exception e) {
@@ -129,10 +143,204 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
+    public synchronized Map<String, com.keshav.entity.SupplierProfile> seedCategorySuppliers() {
+        Map<String, com.keshav.entity.SupplierProfile> supplierMap = new HashMap<>();
+        
+        String[][] categorySupplierMeta = {
+            {"Beverages", "beveragesSupplier@shoply.com", "Vikram Malhotra", "Valley Brews & Beverages Corp", "Beverages & Cold Brews", "New Delhi", "Delhi", "110020", "Plot 14, Okhla Phase II, Industrial Area", "07AAAAA1234A1Z5", "9811223344"},
+            {"Snacks", "snacksSupplier@shoply.com", "Suresh Nair", "CrunchCraft Foods & Artisan Snacks", "Artisan Snacks & Confectionery", "Mumbai", "Maharashtra", "400093", "Unit 8B, MIDC Industrial Estate, Andheri East", "27AABCC5678B1Z2", "9822334455"},
+            {"Dairy", "dairySupplier@shoply.com", "Deepak Patel", "Vedic Farms Dairy & Organic Produce", "Farm Fresh Dairy & Organic Produce", "Bengaluru", "Karnataka", "560066", "Sy No. 45/2, Whitefield Agro Park", "29AACDD9012C1Z8", "9833445566"},
+            {"Personal Care", "personalCareSupplier@shoply.com", "Ananya Sen", "Botanica Pure Life Sciences Pvt Ltd", "Personal Care & Botanical Wellness", "Hyderabad", "Telangana", "500081", "Suite 302, HITEC City Pharma Hub", "36AADEE3456D1Z1", "9844556677"},
+            {"Household", "householdSupplier@shoply.com", "Sunita Rao", "CleanNest Home Solutions Ltd", "Home Care & Household Essentials", "Chennai", "Tamil Nadu", "600058", "77 Ambattur Industrial Estate", "33AAEFF7890E1Z4", "9855667788"},
+            {"Accessories", "accessoriesSupplier@shoply.com", "Amit Roy", "UrbanVibe Lifestyle Gear & Accessories", "Travel Gear & Lifestyle Accessories", "Kolkata", "West Bengal", "700091", "Sector V, Salt Lake Electronics Complex", "19AAGGG1234F1Z7", "9866778899"},
+            {"Clothing", "clothingSupplier@shoply.com", "Priya Sharma", "Aura Apparel Guild & Fashion Works", "Apparel, Cottons & Ready-to-Wear", "Ahmedabad", "Gujarat", "382405", "45 Narol Textile Zone", "24AAHHH5678G1Z9", "9877889900"},
+            {"Footwear", "footwearSupplier@shoply.com", "Karan Verma", "Strider Athletic Footwear & Leather Works", "Footwear & Athletic Shoes", "Pune", "Maharashtra", "410501", "Plot 102, Chakan MIDC Phase II", "27AAIII9012H1Z3", "9888990011"},
+            {"Electronics", "electronicsSupplier@shoply.com", "Rohan Mehta", "ElectraTech Logistics India Pvt Ltd", "Audio, Consumer Tech & Smart Gadgets", "Bengaluru", "Karnataka", "560100", "Electronic City Phase 1, Hosur Road", "29AAJJJ3456I1Z6", "9899001122"}
+        };
+
+        for (String[] meta : categorySupplierMeta) {
+            String catName = meta[0];
+            String email = meta[1];
+            String personName = meta[2];
+            String businessName = meta[3];
+            String industry = meta[4];
+            String city = meta[5];
+            String state = meta[6];
+            String postalCode = meta[7];
+            String address = meta[8];
+            String taxId = meta[9];
+            String phone = meta[10];
+
+            User supplierUser = userRepository.findByEmail(email).orElseGet(() -> {
+                User u = new User();
+                u.setName(personName);
+                u.setEmail(email);
+                u.setPassword(passwordEncoder.encode("supplier123"));
+                u.setRole(com.keshav.entity.Role.SUPPLIER);
+                u.setEnabled(true);
+                return userRepository.save(u);
+            });
+
+            // Ensure contact name and active credentials
+            if (!personName.equals(supplierUser.getName())) {
+                supplierUser.setName(personName);
+                userRepository.save(supplierUser);
+            }
+
+            com.keshav.entity.SupplierProfile profile = supplierProfileRepository.findByUser(supplierUser).orElseGet(() -> {
+                com.keshav.entity.SupplierProfile sp = new com.keshav.entity.SupplierProfile();
+                sp.setUser(supplierUser);
+                sp.setBusinessName(businessName);
+                sp.setBusinessEmail(email);
+                sp.setPhone(phone);
+                sp.setBusinessAddress(address);
+                sp.setCity(city);
+                sp.setState(state);
+                sp.setPostalCode(postalCode);
+                sp.setCountry("India");
+                sp.setTaxIdentifier(taxId);
+                sp.setCategory(industry);
+                sp.setStatus(com.keshav.entity.SupplierStatus.APPROVED);
+                return supplierProfileRepository.save(sp);
+            });
+
+            // Update existing profile fields to match distinct branding
+            profile.setBusinessName(businessName);
+            profile.setBusinessEmail(email);
+            profile.setPhone(phone);
+            profile.setBusinessAddress(address);
+            profile.setCity(city);
+            profile.setState(state);
+            profile.setPostalCode(postalCode);
+            profile.setTaxIdentifier(taxId);
+            profile.setCategory(industry);
+            profile.setStatus(com.keshav.entity.SupplierStatus.APPROVED);
+            com.keshav.entity.SupplierProfile savedSp = supplierProfileRepository.save(profile);
+
+            // Seed sample POs for each supplier if not yet created
+            if (purchaseOrderRepository.countBySupplier(savedSp) == 0) {
+                com.keshav.entity.PurchaseOrder po1 = new com.keshav.entity.PurchaseOrder();
+                String prefix = catName.toUpperCase().substring(0, Math.min(3, catName.length()));
+                po1.setPoNumber("PO-" + prefix + "-2026-001");
+                po1.setSupplier(savedSp);
+                po1.setStatus(com.keshav.entity.PurchaseOrderStatus.PENDING);
+                po1.setOrderDate(LocalDateTime.now().minusDays(2));
+                po1.setExpectedDeliveryDate(LocalDateTime.now().plusDays(4));
+                po1.setTotalAmount(java.math.BigDecimal.valueOf(32500.00));
+                po1.setSupplierNotes("Quarterly procurement batch for " + catName + " catalog.");
+                purchaseOrderRepository.save(po1);
+
+                com.keshav.entity.PurchaseOrder po2 = new com.keshav.entity.PurchaseOrder();
+                po2.setPoNumber("PO-" + prefix + "-2026-002");
+                po2.setSupplier(savedSp);
+                po2.setStatus(com.keshav.entity.PurchaseOrderStatus.ACCEPTED);
+                po2.setOrderDate(LocalDateTime.now().minusDays(5));
+                po2.setExpectedDeliveryDate(LocalDateTime.now().plusDays(2));
+                po2.setTotalAmount(java.math.BigDecimal.valueOf(48900.00));
+                po2.setSupplierNotes("Expedited replenishment shipment.");
+                purchaseOrderRepository.save(po2);
+            }
+
+            // Seed welcome notification if empty
+            if (supplierNotificationRepository.findBySupplierIdOrderByCreatedAtDesc(savedSp.getId()).isEmpty()) {
+                com.keshav.entity.SupplierNotification notif = new com.keshav.entity.SupplierNotification();
+                notif.setSupplierId(savedSp.getId());
+                notif.setTitle("Welcome to Shoply Supplier Portal");
+                notif.setMessage("Your merchant account for " + businessName + " is approved and active.");
+                notif.setType("GENERAL");
+                notif.setTargetUrl("/supplier/dashboard");
+                notif.setRead(false);
+                supplierNotificationRepository.save(notif);
+            }
+
+            supplierMap.put(catName.toLowerCase().trim(), savedSp);
+        }
+
+        // 2. Dynamic check for any other DB categories
+        for (Category cat : categoryRepository.findAll()) {
+            String catKey = cat.getName().toLowerCase().trim();
+            if (!supplierMap.containsKey(catKey)) {
+                String safeName = cat.getName().replaceAll("[^a-zA-Z0-9]", "");
+                String email = safeName.toLowerCase() + "Supplier@shoply.com";
+                String businessName = cat.getName() + " Wholesale Enterprises";
+
+                User supplierUser = userRepository.findByEmail(email).orElseGet(() -> {
+                    User u = new User();
+                    u.setName(cat.getName() + " Merchant");
+                    u.setEmail(email);
+                    u.setPassword(passwordEncoder.encode("supplier123"));
+                    u.setRole(com.keshav.entity.Role.SUPPLIER);
+                    u.setEnabled(true);
+                    return userRepository.save(u);
+                });
+
+                com.keshav.entity.SupplierProfile profile = supplierProfileRepository.findByUser(supplierUser).orElseGet(() -> {
+                    com.keshav.entity.SupplierProfile sp = new com.keshav.entity.SupplierProfile();
+                    sp.setUser(supplierUser);
+                    sp.setBusinessName(businessName);
+                    sp.setBusinessEmail(email);
+                    sp.setPhone("9800001122");
+                    sp.setBusinessAddress("National Distribution Center, Sector 4");
+                    sp.setCity("Bengaluru");
+                    sp.setState("Karnataka");
+                    sp.setPostalCode("560001");
+                    sp.setCountry("India");
+                    sp.setTaxIdentifier("29AAAAA0000A1Z9");
+                    sp.setCategory(cat.getName());
+                    sp.setStatus(com.keshav.entity.SupplierStatus.APPROVED);
+                    return supplierProfileRepository.save(sp);
+                });
+
+                supplierMap.put(catKey, profile);
+            }
+        }
+
+        return supplierMap;
+    }
+
+    public synchronized void ensureProductsHaveSuppliers() {
+        Map<String, com.keshav.entity.SupplierProfile> supplierMap = seedCategorySuppliers();
+        List<Product> allProds = productRepository.findAll();
+        int count = 0;
+
+        for (Product prod : allProds) {
+            if (prod.getCategory() != null) {
+                String catKey = prod.getCategory().getName().toLowerCase().trim();
+                com.keshav.entity.SupplierProfile sp = supplierMap.get(catKey);
+                if (sp != null && (prod.getSupplier() == null || !prod.getSupplier().getId().equals(sp.getId()))) {
+                    prod.setSupplier(sp);
+                    productRepository.save(prod);
+                    count++;
+                }
+            }
+        }
+
+        if (count > 0) {
+            log.info("Successfully mapped and assigned {} products to their exact category suppliers.", count);
+        }
+
+        // 3. Remove legacy demo supplier now that products are re-assigned
+        try {
+            userRepository.findByEmail("supplier@ecommerce.com").ifPresent(oldUser -> {
+                supplierProfileRepository.findByUser(oldUser).ifPresent(sp -> {
+                    purchaseOrderRepository.findBySupplierOrderByCreatedAtDesc(sp).forEach(purchaseOrderRepository::delete);
+                    supplierNotificationRepository.findBySupplierIdOrderByCreatedAtDesc(sp.getId()).forEach(supplierNotificationRepository::delete);
+                    supplierAuditLogRepository.findTop20BySupplierIdOrderByCreatedAtDesc(sp.getId()).forEach(supplierAuditLogRepository::delete);
+                    supplierProfileRepository.delete(sp);
+                });
+                userRepository.delete(oldUser);
+                log.info("Successfully removed legacy demo supplier account: supplier@ecommerce.com");
+            });
+        } catch (Exception e) {
+            log.warn("Could not delete legacy supplier: {}", e.getMessage());
+        }
+    }
+
     @Transactional
     public synchronized Map<String, Object> seedAll() {
         log.info("Ensuring ONLY unique 100-product production catalog with 100 UNIQUE IMAGES...");
         seedUsersIfMissing();
+        Map<String, com.keshav.entity.SupplierProfile> supplierMap = seedCategorySuppliers();
 
         // 1. Categories
         Map<String, Category> catMap = new HashMap<>();
@@ -869,6 +1077,11 @@ public class DataSeeder implements CommandLineRunner {
             Category cat = catMap.get(p.categoryKey.toLowerCase());
             if (cat != null) {
                 prod.setCategory(cat);
+            }
+
+            com.keshav.entity.SupplierProfile supp = supplierMap.get(p.categoryKey.toLowerCase());
+            if (supp != null) {
+                prod.setSupplier(supp);
             }
 
             productRepository.save(prod);

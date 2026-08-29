@@ -36,6 +36,16 @@ public class SupplierController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping("/suppliers/{id}/public-catalog")
+    public ResponseEntity<SupplierPublicCatalogDTO> getPublicSupplierCatalog(
+            @PathVariable Long id,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(supplierService.getPublicSupplierCatalog(id, search, pageable));
+    }
+
     // ==========================================
     // SUPPLIER PORTAL (AUTHENTICATED SUPPLIER)
     // ==========================================
