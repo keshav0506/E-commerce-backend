@@ -8,6 +8,8 @@ public interface IAuthService {
 
     LoginResponseDTO login(LoginRequestDTO request);
 
+    LoginResponseDTO syncFirebaseUser(FirebaseSyncRequestDTO request);
+
     ApiResponseDTO changePassword(String email, ChangePasswordRequestDTO request);
 
     ApiResponseDTO forgotPassword(ForgotPasswordRequestDTO request);

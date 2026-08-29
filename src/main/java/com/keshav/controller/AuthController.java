@@ -36,6 +36,15 @@ public class AuthController {
         );
     }
 
+    @PostMapping("/firebase-sync")
+    public ResponseEntity<LoginResponseDTO> firebaseSync(
+            @RequestBody FirebaseSyncRequestDTO request) {
+
+        return ResponseEntity.ok(
+                authService.syncFirebaseUser(request)
+        );
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<ApiResponseDTO> changePassword(
             @Valid @RequestBody ChangePasswordRequestDTO request,

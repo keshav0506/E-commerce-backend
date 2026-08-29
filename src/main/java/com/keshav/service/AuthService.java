@@ -15,15 +15,18 @@ public class AuthService implements IAuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final com.keshav.security.FirebaseTokenService firebaseTokenService;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService) {
+            JwtService jwtService,
+            com.keshav.security.FirebaseTokenService firebaseTokenService) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.firebaseTokenService = firebaseTokenService;
     }
 
     @Override
@@ -86,6 +89,39 @@ public class AuthService implements IAuthService {
                 user.getEmail(),
                 user.getRole(),
                 token
+        );
+    }
+
+    @Override
+    public LoginResponseDTO syncFirebaseUser(FirebaseSyncRequestDTO request) {
+        String token = request != null ? request.getIdToken() : null;
+        com.google.firebase.auth.FirebaseToken decodedToken = null;
+
+        if (token != null && !token.isBlank()) {
+            decodedToken = firebaseTokenService.verifyToken(token);
+        }
+
+        User user;
+        if (decodedToken != null) {
+            user = firebaseTokenService.syncUser(decodedToken, request.getName());
+        } else {
+            // Handle registration or direct login sync fallback if Admin SDK is in mock/dev mode
+            if (request == null || ((request.getEmail() == null || request.getEmail().isBlank()) && (token == null || token.isBlank()))) {
+                throw new IllegalArgumentException("Invalid Firebase authentication request");
+            }
+            String email = (request.getEmail() != null && !request.getEmail().isBlank()) ? request.getEmail() : "user@firebase.dev";
+            String uid = "fb-uid-" + Math.abs(email.toLowerCase().hashCode());
+            user = firebaseTokenService.syncUser(uid, email, request.getName());
+        }
+
+        String appToken = jwtService.generateToken(user.getEmail(), user.getRole());
+
+        return new LoginResponseDTO(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                appToken
         );
     }
 

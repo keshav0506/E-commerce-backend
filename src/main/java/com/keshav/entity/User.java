@@ -15,6 +15,9 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "firebase_uid", unique = true)
+    private String firebaseUid;
+
     private String name;
 
     @Column(unique = true, nullable = false)
@@ -27,4 +30,21 @@ public class User {
     private String resetToken;
 
     private java.time.LocalDateTime resetTokenExpiry;
+
+    @Column(name = "created_at")
+    private java.time.LocalDateTime createdAt = java.time.LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    private java.time.LocalDateTime updatedAt = java.time.LocalDateTime.now();
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = java.time.LocalDateTime.now();
+        this.updatedAt = java.time.LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = java.time.LocalDateTime.now();
+    }
 }
