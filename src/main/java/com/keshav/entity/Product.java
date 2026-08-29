@@ -65,6 +65,10 @@ public class Product {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "supplier_id")
+    private SupplierProfile supplier;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 

@@ -29,4 +29,16 @@ public interface ISupplierService {
     List<SupplierNotificationDTO> getMyNotifications();
 
     void markNotificationAsRead(Long notificationId);
+
+    Page<SupplierProductDTO> getMyProducts(String search, Pageable pageable);
+
+    SupplierProductDTO createProduct(SupplierProductRequestDTO request);
+
+    SupplierProductDTO getMyProductById(Long productId);
+
+    SupplierProductDTO updateProduct(Long productId, SupplierProductRequestDTO request);
+
+    void deleteProduct(Long productId);
+
+    SupplierProductDTO updateProductStock(Long productId, int stock);
 }

@@ -8,6 +8,8 @@ import com.keshav.exception.CategoryNotFoundException;
 import com.keshav.exception.ProductNotFoundException;
 import com.keshav.repository.CategoryRepository;
 import com.keshav.repository.ProductRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class ProductService implements IProductService {
     }
 
     @Override
+    @CacheEvict(value = {"products", "productDetails", "supplierProducts", "supplierDashboard"}, allEntries = true)
     public ProductResponseDTO saveProduct(ProductRequestDTO productDTO) {
 
         Category category = categoryRepository.findById(productDTO.getCategoryId())
@@ -105,6 +108,7 @@ public class ProductService implements IProductService {
     }
 
     @Override
+    @Cacheable(value = "productDetails", key = "#id")
     public ProductResponseDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
@@ -129,6 +133,7 @@ public class ProductService implements IProductService {
     }
 
     @Override
+    @CacheEvict(value = {"products", "productDetails", "supplierProducts", "supplierDashboard"}, allEntries = true)
     public ProductResponseDTO updateProduct(
             Long id,
             ProductRequestDTO productDTO) {
@@ -157,6 +162,7 @@ public class ProductService implements IProductService {
     }
 
     @Override
+    @CacheEvict(value = {"products", "productDetails", "supplierProducts", "supplierDashboard"}, allEntries = true)
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->

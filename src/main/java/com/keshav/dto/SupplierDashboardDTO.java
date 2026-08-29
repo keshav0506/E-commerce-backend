@@ -24,6 +24,8 @@ public class SupplierDashboardDTO {
     private BigDecimal totalRevenue;
     private double onTimeDeliveryRate;
     private double fulfillmentRate;
+    private long totalProductsListed;
+    private long lowStockProductsCount;
     private List<PurchaseOrderDTO> recentPurchaseOrders;
     private List<SupplierNotificationDTO> recentNotifications;
 }

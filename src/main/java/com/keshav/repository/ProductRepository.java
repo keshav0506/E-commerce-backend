@@ -34,4 +34,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "LOWER(p.sku) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(p.category.name) LIKE LOWER(CONCAT('%', :query, '%'))")
     Page<Product> searchAcrossFields(@Param("query") String query, Pageable pageable);
+
+    Page<Product> findBySupplierId(Long supplierId, Pageable pageable);
+
+    Page<Product> findBySupplierIdAndNameContainingIgnoreCase(Long supplierId, String name, Pageable pageable);
+
+    long countBySupplierId(Long supplierId);
+
+    long countBySupplierIdAndStockLessThanEqual(Long supplierId, int stock);
 }

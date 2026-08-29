@@ -115,4 +115,48 @@ public class SupplierController {
         supplierService.markNotificationAsRead(id);
         return ResponseEntity.noContent().build();
     }
+
+    // ==========================================
+    // SUPPLIER PRODUCT CATALOG MANAGEMENT
+    // ==========================================
+
+    @GetMapping("/supplier/products")
+    public ResponseEntity<Page<SupplierProductDTO>> getMyProducts(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(supplierService.getMyProducts(search, pageable));
+    }
+
+    @PostMapping("/supplier/products")
+    public ResponseEntity<SupplierProductDTO> createProduct(@Valid @RequestBody SupplierProductRequestDTO request) {
+        SupplierProductDTO created = supplierService.createProduct(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @GetMapping("/supplier/products/{id}")
+    public ResponseEntity<SupplierProductDTO> getProductById(@PathVariable Long id) {
+        return ResponseEntity.ok(supplierService.getMyProductById(id));
+    }
+
+    @PutMapping("/supplier/products/{id}")
+    public ResponseEntity<SupplierProductDTO> updateProduct(
+            @PathVariable Long id,
+            @Valid @RequestBody SupplierProductRequestDTO request) {
+        return ResponseEntity.ok(supplierService.updateProduct(id, request));
+    }
+
+    @DeleteMapping("/supplier/products/{id}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+        supplierService.deleteProduct(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/supplier/products/{id}/stock")
+    public ResponseEntity<SupplierProductDTO> updateStock(
+            @PathVariable Long id,
+            @Valid @RequestBody SupplierStockUpdateDTO request) {
+        return ResponseEntity.ok(supplierService.updateProductStock(id, request.getStock()));
+    }
 }

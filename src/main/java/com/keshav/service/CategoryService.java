@@ -5,6 +5,8 @@ import com.keshav.dto.CategoryResponseDTO;
 import com.keshav.entity.Category;
 import com.keshav.exception.CategoryNotFoundException;
 import com.keshav.repository.CategoryRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,6 +21,7 @@ public class CategoryService implements ICategoryService {
     }
 
     @Override
+    @CacheEvict(value = {"categories", "products"}, allEntries = true)
     public CategoryResponseDTO saveCategory(CategoryRequestDTO dto) {
 
         Category category = new Category();
@@ -34,6 +37,7 @@ public class CategoryService implements ICategoryService {
     }
 
     @Override
+    @Cacheable(value = "categories")
     public List<CategoryResponseDTO> getAllCategories() {
 
         return categoryRepository.findAll()
@@ -43,6 +47,7 @@ public class CategoryService implements ICategoryService {
     }
 
     @Override
+    @Cacheable(value = "categories", key = "#id")
     public CategoryResponseDTO getCategoryById(Long id) {
 
         Category category = categoryRepository.findById(id)
@@ -55,6 +60,7 @@ public class CategoryService implements ICategoryService {
     }
 
     @Override
+    @CacheEvict(value = {"categories", "products"}, allEntries = true)
     public CategoryResponseDTO updateCategory(
             Long id,
             CategoryRequestDTO dto) {
@@ -64,7 +70,7 @@ public class CategoryService implements ICategoryService {
                         .orElseThrow(() ->
                                 new CategoryNotFoundException(
                                         "Category not found with id: " + id
-                                ));
+                                        ));
 
         existingCategory.setName(dto.getName());
         existingCategory.setDescription(dto.getDescription());
@@ -78,6 +84,7 @@ public class CategoryService implements ICategoryService {
     }
 
     @Override
+    @CacheEvict(value = {"categories", "products"}, allEntries = true)
     public void deleteCategory(Long id) {
 
         Category category = categoryRepository.findById(id)

@@ -30,6 +30,8 @@ public class SupplierService implements ISupplierService {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final SupplierAuditLogRepository auditLogRepository;
     private final SupplierNotificationRepository notificationRepository;
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
     private final PasswordEncoder passwordEncoder;
 
     public SupplierService(
@@ -38,12 +40,16 @@ public class SupplierService implements ISupplierService {
             PurchaseOrderRepository purchaseOrderRepository,
             SupplierAuditLogRepository auditLogRepository,
             SupplierNotificationRepository notificationRepository,
+            ProductRepository productRepository,
+            CategoryRepository categoryRepository,
             PasswordEncoder passwordEncoder) {
         this.supplierProfileRepository = supplierProfileRepository;
         this.userRepository = userRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.auditLogRepository = auditLogRepository;
         this.notificationRepository = notificationRepository;
+        this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -207,6 +213,9 @@ public class SupplierService implements ISupplierService {
                         .build())
                 .collect(Collectors.toList());
 
+        long totalProducts = productRepository.countBySupplierId(profile.getId());
+        long lowStockProducts = productRepository.countBySupplierIdAndStockLessThanEqual(profile.getId(), 5);
+
         return SupplierDashboardDTO.builder()
                 .pendingOrders(pending)
                 .acceptedOrders(accepted)
@@ -218,6 +227,8 @@ public class SupplierService implements ISupplierService {
                 .totalRevenue(totalRevenue)
                 .fulfillmentRate(Math.round(fulfillmentRate * 10.0) / 10.0)
                 .onTimeDeliveryRate(onTimeDeliveryRate)
+                .totalProductsListed(totalProducts)
+                .lowStockProductsCount(lowStockProducts)
                 .recentPurchaseOrders(recentDTOs)
                 .recentNotifications(notifs)
                 .build();
@@ -369,5 +380,180 @@ public class SupplierService implements ISupplierService {
                 .createdAt(po.getCreatedAt())
                 .updatedAt(po.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SupplierProductDTO> getMyProducts(String search, Pageable pageable) {
+        SupplierProfile supplier = getAuthenticatedSupplier();
+        Page<Product> page;
+        if (search != null && !search.isBlank()) {
+            page = productRepository.findBySupplierIdAndNameContainingIgnoreCase(supplier.getId(), search.trim(), pageable);
+        } else {
+            page = productRepository.findBySupplierId(supplier.getId(), pageable);
+        }
+        return page.map(SupplierProductDTO::fromEntity);
+    }
+
+    @Override
+    public SupplierProductDTO createProduct(SupplierProductRequestDTO request) {
+        SupplierProfile supplier = getAuthenticatedSupplier();
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.getCategoryId()));
+
+        // Generate SKU if not provided
+        String sku = request.getSku();
+        if (sku == null || sku.isBlank()) {
+            sku = "SKU-" + supplier.getBusinessName().replaceAll("[^a-zA-Z0-9]", "").toUpperCase().substring(0, Math.min(4, supplier.getBusinessName().length())) + "-" + System.currentTimeMillis() % 100000;
+        }
+
+        // Generate unique slug
+        String baseSlug = request.getName().toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+        String slug = baseSlug + "-" + (System.currentTimeMillis() % 10000);
+
+        Product product = new Product();
+        product.setSku(sku);
+        product.setName(request.getName().trim());
+        product.setSlug(slug);
+        product.setDescription(request.getDescription());
+        product.setShortDescription(request.getShortDescription());
+        product.setBrand(request.getBrand() != null && !request.getBrand().isBlank() ? request.getBrand() : supplier.getBusinessName());
+        product.setPrice(request.getPrice());
+        product.setDiscountPrice(request.getDiscountPrice());
+        product.setStock(request.getStock());
+        product.setLowStockThreshold(request.getLowStockThreshold() != null ? request.getLowStockThreshold() : 5);
+        product.setImage(request.getImage());
+        product.setStatus(request.getStatus() != null ? request.getStatus() : "ACTIVE");
+        product.setCategory(category);
+        product.setSupplier(supplier);
+        product.setFeatured(request.getFeatured() != null ? request.getFeatured() : false);
+        product.setRating(4.5);
+        product.setReviewCount(0);
+
+        Product saved = productRepository.save(product);
+
+        auditLogRepository.save(new SupplierAuditLog(
+                supplier.getId(),
+                supplier.getUser().getEmail(),
+                "PRODUCT_CREATED",
+                "Created product '" + saved.getName() + "' (SKU: " + saved.getSku() + ")"
+        ));
+
+        notificationRepository.save(new SupplierNotification(
+                supplier.getId(),
+                "Product Listed Successfully",
+                "Your product '" + saved.getName() + "' has been listed in the catalog.",
+                "PRODUCT",
+                "/supplier/products"
+        ));
+
+        return SupplierProductDTO.fromEntity(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SupplierProductDTO getMyProductById(Long productId) {
+        SupplierProfile supplier = getAuthenticatedSupplier();
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
+
+        if (product.getSupplier() == null || !product.getSupplier().getId().equals(supplier.getId())) {
+            throw new UnauthorizedException("You do not have permission to access this product.");
+        }
+
+        return SupplierProductDTO.fromEntity(product);
+    }
+
+    @Override
+    public SupplierProductDTO updateProduct(Long productId, SupplierProductRequestDTO request) {
+        SupplierProfile supplier = getAuthenticatedSupplier();
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
+
+        if (product.getSupplier() == null || !product.getSupplier().getId().equals(supplier.getId())) {
+            throw new UnauthorizedException("You do not have permission to update this product.");
+        }
+
+        if (request.getCategoryId() != null) {
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.getCategoryId()));
+            product.setCategory(category);
+        }
+
+        if (request.getName() != null && !request.getName().isBlank()) product.setName(request.getName().trim());
+        if (request.getDescription() != null) product.setDescription(request.getDescription());
+        if (request.getShortDescription() != null) product.setShortDescription(request.getShortDescription());
+        if (request.getBrand() != null) product.setBrand(request.getBrand());
+        if (request.getPrice() != null) product.setPrice(request.getPrice());
+        if (request.getDiscountPrice() != null) product.setDiscountPrice(request.getDiscountPrice());
+        if (request.getStock() != null) product.setStock(request.getStock());
+        if (request.getLowStockThreshold() != null) product.setLowStockThreshold(request.getLowStockThreshold());
+        if (request.getImage() != null && !request.getImage().isBlank()) product.setImage(request.getImage());
+        if (request.getStatus() != null) product.setStatus(request.getStatus());
+        if (request.getFeatured() != null) product.setFeatured(request.getFeatured());
+
+        Product updated = productRepository.save(product);
+
+        auditLogRepository.save(new SupplierAuditLog(
+                supplier.getId(),
+                supplier.getUser().getEmail(),
+                "PRODUCT_UPDATED",
+                "Updated details for product '" + updated.getName() + "'"
+        ));
+
+        return SupplierProductDTO.fromEntity(updated);
+    }
+
+    @Override
+    public void deleteProduct(Long productId) {
+        SupplierProfile supplier = getAuthenticatedSupplier();
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
+
+        if (product.getSupplier() == null || !product.getSupplier().getId().equals(supplier.getId())) {
+            throw new UnauthorizedException("You do not have permission to delete this product.");
+        }
+
+        // Soft delete / de-list
+        product.setStatus("INACTIVE");
+        productRepository.save(product);
+
+        auditLogRepository.save(new SupplierAuditLog(
+                supplier.getId(),
+                supplier.getUser().getEmail(),
+                "PRODUCT_DELISTED",
+                "Delisted product '" + product.getName() + "'"
+        ));
+    }
+
+    @Override
+    public SupplierProductDTO updateProductStock(Long productId, int stock) {
+        SupplierProfile supplier = getAuthenticatedSupplier();
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
+
+        if (product.getSupplier() == null || !product.getSupplier().getId().equals(supplier.getId())) {
+            throw new UnauthorizedException("You do not have permission to adjust inventory for this product.");
+        }
+
+        int prevStock = product.getStock();
+        product.setStock(stock);
+        if (stock > 0 && "OUT_OF_STOCK".equalsIgnoreCase(product.getStatus())) {
+            product.setStatus("ACTIVE");
+        } else if (stock == 0) {
+            product.setStatus("OUT_OF_STOCK");
+        }
+
+        Product saved = productRepository.save(product);
+
+        auditLogRepository.save(new SupplierAuditLog(
+                supplier.getId(),
+                supplier.getUser().getEmail(),
+                "STOCK_ADJUSTED",
+                "Adjusted inventory for '" + saved.getName() + "' from " + prevStock + " to " + stock
+        ));
+
+        return SupplierProductDTO.fromEntity(saved);
     }
 }
