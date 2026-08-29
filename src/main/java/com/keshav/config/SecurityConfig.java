@@ -48,7 +48,8 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
-                                "/api/seed/**"
+                                "/api/seed/**",
+                                "/api/images/**"
                         ).permitAll()
 
 
@@ -144,12 +145,12 @@ public class SecurityConfig {
                         // =========================
 
                         .requestMatchers(
-                                "/api/admin/**"
-                        ).hasRole("ADMIN")
-
-                        .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/images/upload"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                "/api/admin/**"
                         ).hasRole("ADMIN")
 
                         .anyRequest().authenticated()

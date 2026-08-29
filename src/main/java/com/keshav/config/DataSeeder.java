@@ -54,9 +54,17 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     public synchronized void seedIfEmpty() {
-        seedUsersIfMissing();
-        seedAll();
-        seedSampleReviewsIfMissing();
+        try {
+            if (productRepository.count() > 0 && userRepository.count() > 0) {
+                log.info("Database is already seeded with {} products. Skipping seeding.", productRepository.count());
+                return;
+            }
+            seedUsersIfMissing();
+            seedAll();
+            seedSampleReviewsIfMissing();
+        } catch (Exception e) {
+            log.warn("Seeding check/execution encountered warning: {}", e.getMessage());
+        }
     }
 
     public synchronized void seedSampleReviewsIfMissing() {
@@ -66,17 +74,31 @@ public class DataSeeder implements CommandLineRunner {
 
             Product p1 = productRepository.findBySku("SKU-BEV-001").orElse(null);
             if (p1 != null) {
-                Review r1 = new Review(null, p1, user, 5, "Outstanding Quality & Fast Delivery",
-                        "Received genuine fresh product in perfect condition. Packaging was super secure. Will definitely buy again!",
-                        true, LocalDateTime.now().minusDays(2), LocalDateTime.now().minusDays(2));
+                Review r1 = new Review();
+                r1.setProduct(p1);
+                r1.setUser(user);
+                r1.setRating(5);
+                r1.setTitle("Outstanding Quality & Fast Delivery");
+                r1.setComment("Received genuine fresh product in perfect condition. Packaging was super secure. Will definitely buy again!");
+                r1.setVerifiedPurchase(true);
+                r1.setImages(null);
+                r1.setCreatedAt(LocalDateTime.now().minusDays(2));
+                r1.setUpdatedAt(LocalDateTime.now().minusDays(2));
                 reviewRepository.save(r1);
             }
 
             Product p2 = productRepository.findBySku("SKU-DRY-006").orElse(null);
             if (p2 != null) {
-                Review r2 = new Review(null, p2, user, 5, "100% Authentic Product",
-                        "Great value for money. Very satisfied with the prompt delivery and quality.",
-                        true, LocalDateTime.now().minusDays(1), LocalDateTime.now().minusDays(1));
+                Review r2 = new Review();
+                r2.setProduct(p2);
+                r2.setUser(user);
+                r2.setRating(5);
+                r2.setTitle("100% Authentic Product");
+                r2.setComment("Great value for money. Very satisfied with the prompt delivery and quality.");
+                r2.setVerifiedPurchase(true);
+                r2.setImages(null);
+                r2.setCreatedAt(LocalDateTime.now().minusDays(1));
+                r2.setUpdatedAt(LocalDateTime.now().minusDays(1));
                 reviewRepository.save(r2);
             }
             log.info("Seeded initial verified customer reviews.");

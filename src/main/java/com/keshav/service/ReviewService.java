@@ -1,7 +1,5 @@
 package com.keshav.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.keshav.dto.ProductReviewsSummaryDTO;
 import com.keshav.dto.ReviewRequestDTO;
 import com.keshav.dto.ReviewResponseDTO;
@@ -34,7 +32,6 @@ public class ReviewService implements IReviewService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final OrderItemRepository orderItemRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ReviewService(ReviewRepository reviewRepository,
                          ProductRepository productRepository,
@@ -49,21 +46,58 @@ public class ReviewService implements IReviewService {
     /** Serialize List<String> images to JSON string for DB storage */
     private String serializeImages(List<String> images) {
         if (images == null || images.isEmpty()) return null;
-        try {
-            return objectMapper.writeValueAsString(images);
-        } catch (Exception e) {
-            return null;
+        StringBuilder sb = new StringBuilder("[");
+        boolean first = true;
+        for (String img : images) {
+            if (img == null || img.isBlank()) continue;
+            if (!first) sb.append(",");
+            sb.append("\"").append(img.replace("\\", "\\\\").replace("\"", "\\\"")).append("\"");
+            first = false;
         }
+        sb.append("]");
+        return sb.toString();
     }
 
     /** Deserialize JSON string from DB back to List<String> */
     private List<String> deserializeImages(String json) {
         if (json == null || json.isBlank()) return new ArrayList<>();
-        try {
-            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
-        } catch (Exception e) {
-            return new ArrayList<>();
+        String trimmed = json.trim();
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            trimmed = trimmed.substring(1, trimmed.length() - 1).trim();
         }
+        if (trimmed.isEmpty()) return new ArrayList<>();
+
+        List<String> list = new ArrayList<>();
+        if (trimmed.contains("\"")) {
+            boolean inQuotes = false;
+            StringBuilder current = new StringBuilder();
+            for (int i = 0; i < trimmed.length(); i++) {
+                char c = trimmed.charAt(i);
+                if (c == '\"' && (i == 0 || trimmed.charAt(i - 1) != '\\')) {
+                    inQuotes = !inQuotes;
+                } else if (c == ',' && !inQuotes) {
+                    String item = current.toString().trim();
+                    if (!item.isEmpty()) list.add(unescape(item));
+                    current.setLength(0);
+                } else {
+                    current.append(c);
+                }
+            }
+            String item = current.toString().trim();
+            if (!item.isEmpty()) list.add(unescape(item));
+        } else if (trimmed.contains(",")) {
+            for (String part : trimmed.split(",")) {
+                String s = part.trim();
+                if (!s.isEmpty()) list.add(s);
+            }
+        } else {
+            list.add(trimmed);
+        }
+        return list;
+    }
+
+    private String unescape(String s) {
+        return s.replace("\\\"", "\"").replace("\\\\", "\\");
     }
 
     private Optional<User> getAuthenticatedUser() {

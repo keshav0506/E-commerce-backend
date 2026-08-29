@@ -26,6 +26,9 @@ public class ImageService implements IImageService {
     @Value("${cloudinary.cloud-name:dummy_cloud}")
     private String cloudName;
 
+    @Value("${server.port:8082}")
+    private String serverPort;
+
     public ImageService(Cloudinary cloudinary) {
         this.cloudinary = cloudinary;
     }
@@ -83,7 +86,7 @@ public class ImageService implements IImageService {
                 Files.copy(in, targetLocation, StandardCopyOption.REPLACE_EXISTING);
             }
 
-            String localUrl = "http://localhost:8081/uploads/products/" + filename;
+            String localUrl = "http://localhost:" + serverPort + "/uploads/products/" + filename;
             log.info("Saved product image locally: {}", localUrl);
             return localUrl;
 
