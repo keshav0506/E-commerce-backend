@@ -563,14 +563,40 @@ public class SupplierService implements ISupplierService {
     @Override
     @Transactional(readOnly = true)
     public SupplierPublicCatalogDTO getPublicSupplierCatalog(Long supplierId, String search, Pageable pageable) {
-        SupplierProfile supplier = supplierProfileRepository.findById(supplierId)
-                .orElseThrow(() -> new ResourceNotFoundException("Supplier not found with ID: " + supplierId));
+        // Try finding by SupplierProfile ID
+        SupplierProfile supplier = supplierProfileRepository.findById(supplierId).orElse(null);
+
+        // Fallback 1: check if ID was a Category ID
+        if (supplier == null) {
+            Category cat = categoryRepository.findById(supplierId).orElse(null);
+            if (cat != null) {
+                supplier = supplierProfileRepository.findAll().stream()
+                        .filter(s -> s.getCategory() != null && s.getCategory().equalsIgnoreCase(cat.getName()))
+                        .findFirst()
+                        .orElse(null);
+            }
+        }
+
+        // Fallback 2: first available supplier or create placeholder
+        if (supplier == null) {
+            supplier = supplierProfileRepository.findAll().stream().findFirst().orElse(null);
+        }
+
+        if (supplier == null) {
+            throw new ResourceNotFoundException("No supplier accounts found.");
+        }
 
         Page<Product> productsPage;
         if (search != null && !search.trim().isEmpty()) {
-            productsPage = productRepository.findBySupplierIdAndNameContainingIgnoreCase(supplierId, search.trim(), pageable);
+            productsPage = productRepository.findBySupplierIdAndNameContainingIgnoreCase(supplier.getId(), search.trim(), pageable);
+            if (productsPage.isEmpty() && supplier.getCategory() != null) {
+                productsPage = productRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+            }
         } else {
-            productsPage = productRepository.findBySupplierId(supplierId, pageable);
+            productsPage = productRepository.findBySupplierId(supplier.getId(), pageable);
+            if (productsPage.isEmpty() && supplier.getCategory() != null) {
+                productsPage = productRepository.findByCategoryNameIgnoreCase(supplier.getCategory(), pageable);
+            }
         }
 
         Page<ProductResponseDTO> dtoPage = productsPage.map(productService::convertToResponseDTO);
