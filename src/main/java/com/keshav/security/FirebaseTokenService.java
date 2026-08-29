@@ -98,7 +98,8 @@ public class FirebaseTokenService {
         newUser.setFirebaseUid(uid);
         newUser.setEmail(email.toLowerCase());
         newUser.setName((name != null && !name.isBlank()) ? name : email.split("@")[0]);
-        newUser.setRole("CUSTOMER");
+        newUser.setRole(com.keshav.entity.Role.CUSTOMER);
+        newUser.setEnabled(true);
         newUser.setCreatedAt(LocalDateTime.now());
         newUser.setUpdatedAt(LocalDateTime.now());
 

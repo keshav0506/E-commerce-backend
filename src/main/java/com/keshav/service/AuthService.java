@@ -18,6 +18,7 @@ public class AuthService implements IAuthService {
     private final com.keshav.security.FirebaseTokenService firebaseTokenService;
     private final ICartService cartService;
     private final IWishlistService wishlistService;
+    private final com.keshav.repository.SupplierProfileRepository supplierProfileRepository;
 
     public AuthService(
             UserRepository userRepository,
@@ -25,7 +26,8 @@ public class AuthService implements IAuthService {
             JwtService jwtService,
             com.keshav.security.FirebaseTokenService firebaseTokenService,
             ICartService cartService,
-            IWishlistService wishlistService) {
+            IWishlistService wishlistService,
+            com.keshav.repository.SupplierProfileRepository supplierProfileRepository) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -33,6 +35,7 @@ public class AuthService implements IAuthService {
         this.firebaseTokenService = firebaseTokenService;
         this.cartService = cartService;
         this.wishlistService = wishlistService;
+        this.supplierProfileRepository = supplierProfileRepository;
     }
 
     @Override
@@ -53,7 +56,8 @@ public class AuthService implements IAuthService {
                 passwordEncoder.encode(request.getPassword())
         );
 
-        user.setRole("CUSTOMER");
+        user.setRole(com.keshav.entity.Role.CUSTOMER);
+        user.setEnabled(true);
 
         User savedUser = userRepository.save(user);
 
@@ -64,7 +68,7 @@ public class AuthService implements IAuthService {
                 savedUser.getId(),
                 savedUser.getName(),
                 savedUser.getEmail(),
-                savedUser.getRole()
+                savedUser.getRole().name()
         );
     }
 
@@ -87,21 +91,44 @@ public class AuthService implements IAuthService {
             );
         }
 
+        // 1. Strict Multi-Role Verification (Anti-Enumeration)
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            com.keshav.entity.Role requestedRole = com.keshav.entity.Role.fromString(request.getRole());
+            if (user.getRole() != requestedRole) {
+                throw new InvalidCredentialsException("Invalid credentials or role");
+            }
+        }
+
+        // 2. Supplier Approval Check
+        String supplierStatus = null;
+        if (user.getRole() == com.keshav.entity.Role.SUPPLIER) {
+            com.keshav.entity.SupplierProfile profile = supplierProfileRepository.findByUser(user).orElse(null);
+            if (profile == null) {
+                throw new InvalidCredentialsException("Supplier account profile not found. Please re-apply.");
+            }
+            supplierStatus = profile.getStatus().name();
+            if (profile.getStatus() != com.keshav.entity.SupplierStatus.APPROVED) {
+                throw new InvalidCredentialsException("Supplier account is currently " + profile.getStatus().name() + ". Access is restricted until administrator approval.");
+            }
+        }
+
         String token = jwtService.generateToken(
                 user.getEmail(),
-                user.getRole()
+                user.getRole().name()
         );
 
         // Merge guest cart & wishlist if guestSessionId exists
         mergeGuestData(user, request.getGuestSessionId());
 
-        return new LoginResponseDTO(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                user.getRole(),
-                token
-        );
+        return LoginResponseDTO.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .token(token)
+                .tokenType("Bearer")
+                .supplierStatus(supplierStatus)
+                .build();
     }
 
     @Override
@@ -131,15 +158,16 @@ public class AuthService implements IAuthService {
             mergeGuestData(user, request.getGuestSessionId());
         }
 
-        String appToken = jwtService.generateToken(user.getEmail(), user.getRole());
+        String appToken = jwtService.generateToken(user.getEmail(), user.getRole().name());
 
-        return new LoginResponseDTO(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                user.getRole(),
-                appToken
-        );
+        return LoginResponseDTO.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .token(appToken)
+                .tokenType("Bearer")
+                .build();
     }
 
     private void mergeGuestData(User user, String guestSessionId) {

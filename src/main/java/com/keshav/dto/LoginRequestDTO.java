@@ -15,5 +15,7 @@ public class LoginRequestDTO {
     private String password;
 
     private String guestSessionId;
+
+    private String role;
 }
 

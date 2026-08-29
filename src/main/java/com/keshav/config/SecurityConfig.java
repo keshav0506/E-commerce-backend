@@ -57,9 +57,18 @@ public class SecurityConfig {
                                 "/api/auth/firebase-sync",
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
+                                "/api/suppliers/apply",
                                 "/api/seed/**",
                                 "/api/images/**"
                         ).permitAll()
+
+                        // =========================
+                        // SUPPLIER PORTAL
+                        // =========================
+
+                        .requestMatchers(
+                                "/api/supplier/**"
+                        ).hasAnyRole("SUPPLIER", "ADMIN")
 
 
                         // =========================

@@ -111,7 +111,8 @@ public class DataSeeder implements CommandLineRunner {
             admin.setName("Admin User");
             admin.setEmail("admin@ecommerce.com");
             admin.setPassword(passwordEncoder.encode("admin123"));
-            admin.setRole("ADMIN");
+            admin.setRole(com.keshav.entity.Role.ADMIN);
+            admin.setEnabled(true);
             userRepository.save(admin);
             log.info("Seeded default Admin user: admin@ecommerce.com");
         }
@@ -121,7 +122,8 @@ public class DataSeeder implements CommandLineRunner {
             user.setName("Customer User");
             user.setEmail("user@ecommerce.com");
             user.setPassword(passwordEncoder.encode("user123"));
-            user.setRole("CUSTOMER");
+            user.setRole(com.keshav.entity.Role.CUSTOMER);
+            user.setEnabled(true);
             userRepository.save(user);
             log.info("Seeded default Customer user: user@ecommerce.com");
         }

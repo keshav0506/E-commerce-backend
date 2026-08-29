@@ -25,7 +25,12 @@ public class User {
 
     private String password;
 
-    private String role;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.CUSTOMER;
+
+    @Column(nullable = false)
+    private boolean enabled = true;
 
     private String resetToken;
 
