@@ -22,7 +22,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -116,8 +115,9 @@ public class ReviewService implements IReviewService {
     @Override
     @Transactional(readOnly = true)
     public ProductReviewsSummaryDTO getProductReviews(Long productId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
+        if (!productRepository.existsById(productId)) {
+            throw new ProductNotFoundException("Product not found with id: " + productId);
+        }
 
         List<Review> reviews = reviewRepository.findByProductIdOrderByCreatedAtDesc(productId);
         Optional<User> currentUserOpt = getAuthenticatedUser();
