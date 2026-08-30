@@ -2,6 +2,12 @@ package com.keshav.controller;
 
 import com.keshav.dto.*;
 import com.keshav.entity.PurchaseOrderStatus;
+import com.keshav.entity.SupplierProfile;
+import com.keshav.entity.WholesaleQuoteRequest;
+import com.keshav.exception.ResourceNotFoundException;
+import com.keshav.repository.SupplierProfileRepository;
+import com.keshav.repository.WholesaleQuoteRepository;
+import com.keshav.service.EmailService;
 import com.keshav.service.IPurchaseOrderService;
 import com.keshav.service.ISupplierService;
 import jakarta.validation.Valid;
@@ -20,10 +26,20 @@ public class SupplierController {
 
     private final ISupplierService supplierService;
     private final IPurchaseOrderService purchaseOrderService;
+    private final WholesaleQuoteRepository wholesaleQuoteRepository;
+    private final SupplierProfileRepository supplierProfileRepository;
+    private final EmailService emailService;
 
-    public SupplierController(ISupplierService supplierService, IPurchaseOrderService purchaseOrderService) {
+    public SupplierController(ISupplierService supplierService,
+                              IPurchaseOrderService purchaseOrderService,
+                              WholesaleQuoteRepository wholesaleQuoteRepository,
+                              SupplierProfileRepository supplierProfileRepository,
+                              EmailService emailService) {
         this.supplierService = supplierService;
         this.purchaseOrderService = purchaseOrderService;
+        this.wholesaleQuoteRepository = wholesaleQuoteRepository;
+        this.supplierProfileRepository = supplierProfileRepository;
+        this.emailService = emailService;
     }
 
     // ==========================================
@@ -44,6 +60,60 @@ public class SupplierController {
             @RequestParam(defaultValue = "12") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(supplierService.getPublicSupplierCatalog(id, search, pageable));
+    }
+
+    @PostMapping("/suppliers/{id}/quote")
+    public ResponseEntity<WholesaleQuoteResponseDTO> submitWholesaleQuote(
+            @PathVariable Long id,
+            @Valid @RequestBody WholesaleQuoteRequestDTO request) {
+
+        SupplierProfile supplier = supplierProfileRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Supplier not found with id: " + id));
+
+        WholesaleQuoteRequest quote = new WholesaleQuoteRequest();
+        quote.setSupplier(supplier);
+        quote.setCompanyName(request.getCompanyName());
+        quote.setContactName(request.getContactName());
+        quote.setContactEmail(request.getContactEmail());
+        quote.setContactPhone(request.getContactPhone());
+        quote.setQuantity(request.getQuantity());
+        quote.setNotes(request.getNotes());
+        quote.setProductId(request.getProductId());
+        quote.setProductName(request.getProductName());
+        quote.setStatus("PENDING");
+
+        WholesaleQuoteRequest saved = wholesaleQuoteRepository.save(quote);
+        String referenceId = "WQ-" + saved.getId();
+
+        // Fire async email notification to supplier + admin
+        emailService.sendWholesaleQuoteNotification(
+                referenceId,
+                supplier.getBusinessName(),
+                supplier.getBusinessEmail(),
+                request.getCompanyName(),
+                request.getContactName(),
+                request.getContactEmail(),
+                request.getContactPhone(),
+                request.getQuantity(),
+                request.getProductName(),
+                request.getNotes()
+        );
+
+        WholesaleQuoteResponseDTO response = WholesaleQuoteResponseDTO.builder()
+                .id(saved.getId())
+                .referenceId(referenceId)
+                .supplierBusinessName(supplier.getBusinessName())
+                .companyName(saved.getCompanyName())
+                .contactName(saved.getContactName())
+                .contactEmail(saved.getContactEmail())
+                .quantity(saved.getQuantity())
+                .status(saved.getStatus())
+                .createdAt(saved.getCreatedAt())
+                .message("Your wholesale quote request has been submitted successfully! " +
+                         supplier.getBusinessName() + " will contact you within 1-2 business days.")
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // ==========================================

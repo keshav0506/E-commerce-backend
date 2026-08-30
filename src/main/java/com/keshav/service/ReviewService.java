@@ -121,7 +121,7 @@ public class ReviewService implements IReviewService {
 
         List<Review> reviews = reviewRepository.findByProductIdOrderByCreatedAtDesc(productId);
         Optional<User> currentUserOpt = getAuthenticatedUser();
-        Long currentUserId = currentUserOpt.map(User::getId).orElse(null);
+        Long currentUserId = currentUserOpt.map(u -> u.getId()).orElse(null);
 
         Map<Integer, Long> distribution = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
@@ -151,14 +151,12 @@ public class ReviewService implements IReviewService {
             avgRating = BigDecimal.valueOf(sumRating / totalReviews)
                     .setScale(1, RoundingMode.HALF_UP)
                     .doubleValue();
-        } else {
-            avgRating = 4.8; // Default initial display rating
         }
 
         Map<Integer, Integer> percentages = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
             long count = distribution.getOrDefault(i, 0L);
-            int pct = totalReviews > 0 ? (int) Math.round(((double) count / totalReviews) * 100) : (i == 5 ? 75 : i == 4 ? 20 : 5);
+            int pct = totalReviews > 0 ? (int) Math.round(((double) count / totalReviews) * 100) : 0;
             percentages.put(i, pct);
         }
 

@@ -153,7 +153,7 @@ public class ProductController {
         }
 
         double minEmi = plans.stream()
-                .mapToDouble(com.keshav.dto.EmiPlanDTO.EmiOptionDTO::getMonthlyInstallment)
+                .mapToDouble(opt -> opt.getMonthlyInstallment())
                 .min()
                 .orElse(Math.round(price / 12.0));
 

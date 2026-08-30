@@ -1059,6 +1059,7 @@ public class DataSeeder implements CommandLineRunner {
                 updated++;
             }
 
+            if (prod == null) continue; // guard for static analyser — unreachable at runtime
             prod.setName(p.name);
             prod.setSlug(p.slug);
             prod.setDescription(p.description);

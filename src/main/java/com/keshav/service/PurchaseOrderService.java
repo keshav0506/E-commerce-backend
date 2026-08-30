@@ -3,7 +3,6 @@ package com.keshav.service;
 import com.keshav.dto.*;
 import com.keshav.entity.*;
 import com.keshav.exception.ResourceNotFoundException;
-import com.keshav.exception.UnauthorizedException;
 import com.keshav.repository.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -23,7 +22,6 @@ import java.util.stream.Collectors;
 public class PurchaseOrderService implements IPurchaseOrderService {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
-    private final PurchaseOrderItemRepository purchaseOrderItemRepository;
     private final SupplierProfileRepository supplierProfileRepository;
     private final ProductRepository productRepository;
     private final ISupplierService supplierService;
@@ -32,14 +30,12 @@ public class PurchaseOrderService implements IPurchaseOrderService {
 
     public PurchaseOrderService(
             PurchaseOrderRepository purchaseOrderRepository,
-            PurchaseOrderItemRepository purchaseOrderItemRepository,
             SupplierProfileRepository supplierProfileRepository,
             ProductRepository productRepository,
             ISupplierService supplierService,
             SupplierAuditLogRepository auditLogRepository,
             SupplierNotificationRepository notificationRepository) {
         this.purchaseOrderRepository = purchaseOrderRepository;
-        this.purchaseOrderItemRepository = purchaseOrderItemRepository;
         this.supplierProfileRepository = supplierProfileRepository;
         this.productRepository = productRepository;
         this.supplierService = supplierService;

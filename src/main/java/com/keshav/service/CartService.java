@@ -8,7 +8,6 @@ import com.keshav.entity.CartItem;
 import com.keshav.entity.Product;
 import com.keshav.entity.User;
 import com.keshav.exception.CartItemNotFoundException;
-import com.keshav.exception.CartNotFoundException;
 import com.keshav.exception.ProductNotFoundException;
 import com.keshav.repository.CartItemRepository;
 import com.keshav.repository.CartRepository;
@@ -19,7 +18,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -206,7 +204,7 @@ public class CartService implements ICartService {
                 .toList();
 
         double totalAmount = items.stream()
-                .mapToDouble(CartItemResponseDTO::getTotalPrice)
+                .mapToDouble(item -> item.getTotalPrice())
                 .sum();
 
         return new CartResponseDTO(

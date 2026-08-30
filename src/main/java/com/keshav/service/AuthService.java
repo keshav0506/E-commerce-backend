@@ -142,7 +142,7 @@ public class AuthService implements IAuthService {
 
         User user;
         if (decodedToken != null) {
-            user = firebaseTokenService.syncUser(decodedToken, request.getName());
+            user = firebaseTokenService.syncUser(decodedToken, request != null ? request.getName() : null);
         } else {
             // Handle registration or direct login sync fallback if Admin SDK is in mock/dev mode
             if (request == null || ((request.getEmail() == null || request.getEmail().isBlank()) && (token == null || token.isBlank()))) {

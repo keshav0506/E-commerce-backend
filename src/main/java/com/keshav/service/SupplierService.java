@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -190,8 +189,8 @@ public class SupplierService implements ISupplierService {
         List<PurchaseOrder> allOrders = purchaseOrderRepository.findBySupplierOrderByCreatedAtDesc(profile);
         BigDecimal totalRevenue = allOrders.stream()
                 .filter(po -> po.getStatus() == PurchaseOrderStatus.DELIVERED || po.getStatus() == PurchaseOrderStatus.SHIPPED || po.getStatus() == PurchaseOrderStatus.IN_TRANSIT)
-                .map(PurchaseOrder::getTotalAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(po -> po.getTotalAmount() != null ? po.getTotalAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
 
         double fulfillmentRate = total > 0 ? ((double) completed / total) * 100.0 : 100.0;
         double onTimeDeliveryRate = 96.5; // Calculated or baseline

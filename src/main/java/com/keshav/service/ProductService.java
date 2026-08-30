@@ -9,7 +9,6 @@ import com.keshav.exception.ProductNotFoundException;
 import com.keshav.repository.CategoryRepository;
 import com.keshav.repository.ProductRepository;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
